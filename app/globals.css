@@ -126,7 +126,7 @@ body {
 
 /* ── Primary Gradient & Hairline Utilities ────────────────────────────────── */
 .text-brand-gradient {
-  background: linear-gradient(135deg, #38b6ff 0%, #1060ee 50%, #0a2a9c 100%);
+  background: linear-gradient(135deg, #1060ee, #38b6ff, #2fe6b0);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -179,3 +179,40 @@ body {
   box-shadow: 0 0 25px -5px rgba(47, 230, 176, 0.4);
 }
 
+/* ── Keyframe Animations ───────────────────────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.logo-reveal {
+  animation: logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes logoReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(10px);
+    filter: blur(8px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-2px);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.hero-fade-1 { animation: heroFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+.hero-fade-2 { animation: heroFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; opacity: 0; }
+.hero-fade-3 { animation: heroFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards; opacity: 0; }
+
+@keyframes heroFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

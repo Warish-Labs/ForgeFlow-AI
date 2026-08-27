@@ -28,34 +28,6 @@ export function AnimatedHeroLogo() {
           className="h-28 w-28 md:h-36 md:w-36 drop-shadow-[0_0_40px_rgba(56,182,255,0.65)] transition-transform duration-700 hover:scale-110"
         />
       </div>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .logo-reveal {
-          animation: logoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          opacity: 0;
-        }
-        @keyframes logoReveal {
-          0% {
-            opacity: 0;
-            transform: scale(0.7) translateY(10px);
-            filter: blur(8px);
-          }
-          60% {
-            opacity: 1;
-            transform: scale(1.05) translateY(-2px);
-            filter: blur(0px);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-            filter: blur(0px);
-          }
-        }
-      `}</style>
     </div>
   );
 }

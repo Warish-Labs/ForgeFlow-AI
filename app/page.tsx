@@ -423,22 +423,6 @@ export default function LandingPage() {
         isOpen={isPremiumOpen}
         onClose={() => setIsPremiumOpen(false)}
       />
-
-      <style>{`
-        .hero-fade-1 { animation: heroFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-        .hero-fade-2 { animation: heroFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards; opacity: 0; }
-        .hero-fade-3 { animation: heroFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards; opacity: 0; }
-        @keyframes heroFade {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .text-brand-gradient {
-          background: linear-gradient(135deg, #1060ee, #38b6ff, #2fe6b0);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-      `}</style>
     </div>
   );
 }
