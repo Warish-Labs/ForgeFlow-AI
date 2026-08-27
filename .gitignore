@@ -52,5 +52,4 @@ next-env.d.ts
 /.clerk/
 
 # documentation / specification prompts
-Docs/
-docs/
+!Docs/DEPLOYMENT.md
