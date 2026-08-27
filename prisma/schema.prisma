@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Project Lifecycle ──────────────────────────────────────────────────────
+
+model Project {
+  id                String        @id @default(cuid())
+  // Clerk userId — no FK to a local User table (see BRAIN.md for reasoning)
+  ownerId           String
+  name              String
+  ideaText          String
+  problemStatement  String?
+  status            ProjectStatus @default(PLANNING)
+  // Zod-validated on write — never allow unvalidated structured output to touch the DB
+  requirements      Json?
+  techStack         Json?
+  // Generated ascii/text diagram + plain-language narrative
+  architectureText  String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  features     Feature[]
+  decisions    Decision[]
+  roadmapItems RoadmapItem[]
+  chatSessions ChatSession[]
+  documents    Document[]
+  aiUsage      AiUsageLog[]
+
+  @@index([ownerId])
+  @@index([ownerId, status])
+}
+
+enum ProjectStatus {
+  PLANNING
+  ARCHITECTURE
+  ROADMAP_READY
+  EXPORTED
+}
+
+// ─── Features ───────────────────────────────────────────────────────────────
+
+model Feature {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  phase       FeaturePhase @default(MVP)
+  status      String       @default("planned")
+
+  @@index([projectId])
+}
+
+enum FeaturePhase {
+  MVP
+  PHASE_2
+  PHASE_3
+}
+
+// ─── Decision Log ────────────────────────────────────────────────────────────
+
+model Decision {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  decision      String
+  reasoning     String
+  alternative   String?
+  affectedAreas String[]
+  createdAt     DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// ─── Roadmap ─────────────────────────────────────────────────────────────────
+
+model RoadmapItem {
+  id        String       @id @default(cuid())
+  projectId String
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  phase     FeaturePhase @default(MVP)
+  status    String       @default("todo")
+  dependsOn String[]
+
+  @@index([projectId])
+}
+
+// ─── Chat ────────────────────────────────────────────────────────────────────
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  projectId String
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  messages  ChatMessage[]
+
+  @@index([projectId])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String      // "user" | "assistant" | "system"
+  content   String
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId])
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+model Document {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type      String   // "PRD" | "ARCHITECTURE" | "ROADMAP" | "README" | "DATABASE"
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// ─── Observability ───────────────────────────────────────────────────────────
+
+model AiUsageLog {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  operation  String   // "chat" | "analyze" | "architecture" | "roadmap" | "validate"
+  provider   String   // "groq" | "gemini"
+  durationMs Int
+  status     String   // "success" | "error" | "retried"
+  createdAt  DateTime @default(now())
+
+  @@index([projectId])
+  @@index([projectId, createdAt])
+}
+
+// ─── Phase 4 additions — DO NOT BUILD BEFORE PHASE 4 ────────────────────────
+// model KnowledgeDocument {
+//   id       String           @id @default(cuid())
+//   title    String
+//   category String
+//   content  String
+//   chunks   KnowledgeChunk[]
+// }
+//
+// model KnowledgeChunk {
+//   id         String           @id @default(cuid())
+//   documentId String
+//   document   KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+//   content    String
+//   embedding  Unsupported("vector(768)")?
+//   @@index([documentId])
+// }
