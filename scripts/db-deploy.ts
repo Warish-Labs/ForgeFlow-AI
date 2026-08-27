@@ -26,21 +26,33 @@ function loadEnvFiles() {
       });
     }
   }
+
+  // Ensure DIRECT_URL falls back to DATABASE_URL if omitted in Vercel environment settings
+  if (process.env.DATABASE_URL && !process.env.DIRECT_URL) {
+    process.env.DIRECT_URL = process.env.DATABASE_URL;
+  }
 }
 
 loadEnvFiles();
 
-const prisma = new PrismaClient();
-
 async function runDeploy() {
+  if (!process.env.DATABASE_URL) {
+    console.warn(
+      "⚠️ DATABASE_URL is not set in environment variables. Skipping database migration/seeding."
+    );
+    return;
+  }
+
   console.log("🚀 Running database migrations...");
   try {
     execSync("npx prisma migrate deploy", { stdio: "inherit", env: process.env });
     console.log("✅ Database migrations applied successfully.");
   } catch (error) {
-    console.error("❌ Migration failed:", error);
+    console.error("❌ Prisma migration failed:", error);
     process.exit(1);
   }
+
+  const prisma = new PrismaClient();
 
   try {
     console.log("🔍 Checking if initial database seeding is required...");
