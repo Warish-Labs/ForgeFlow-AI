@@ -40,11 +40,11 @@ export function TavilySearchWidget({ defaultQuery = "" }: TavilySearchWidgetProp
   }
 
   return (
-    <div className="rounded-xl border border-[#c8ad86]/40 bg-[#000000] p-5 shadow-2xl space-y-4">
+    <div className="rounded-xl border border-[#3b82f6]/40 bg-[#050814] p-5 shadow-2xl space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <GlobeIcon className="h-4 w-4 text-[#c8ad86]" />
-          <h3 className="text-sm font-semibold text-[#fff7dd]">
+          <GlobeIcon className="h-4 w-4 text-[#38bdf8]" />
+          <h3 className="text-sm font-semibold text-[#f8fafc]">
             Tavily Live Web Tech Research Engine
           </h3>
           <HelpTooltip
@@ -58,20 +58,20 @@ export function TavilySearchWidget({ defaultQuery = "" }: TavilySearchWidgetProp
       {/* Search Input Form */}
       <form onSubmit={handleSearch} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <SearchIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#66635f]" />
+          <SearchIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#64748b]" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search web for latest tech docs, benchmarks, or library versions (e.g. Next.js 15 Server Actions vs Fastify)..."
-            className="w-full rounded border border-[#fff7dd]/20 bg-[#0a0a0a] pl-9 pr-3 py-2 text-xs text-[#fff7dd] placeholder-[#66635f] focus:border-[#c8ad86] focus:outline-none"
+            placeholder="Search web for latest tech docs, benchmarks, or library versions..."
+            className="w-full rounded border border-[#3b82f6]/30 bg-[#0b1120] pl-9 pr-3 py-2 text-xs text-[#f8fafc] placeholder-[#64748b] focus:border-[#38bdf8] focus:outline-none"
           />
         </div>
         <Button
           type="submit"
           size="sm"
           disabled={!query.trim() || isSearching}
-          className="bg-[#c8ad86] text-[#000000] hover:bg-[#b09570] font-semibold text-xs px-4"
+          className="bg-[#2563eb] text-white hover:bg-[#1d4ed8] font-semibold text-xs px-4"
         >
           {isSearching ? (
             <>
@@ -94,10 +94,10 @@ export function TavilySearchWidget({ defaultQuery = "" }: TavilySearchWidgetProp
 
       {/* Results View */}
       {results && (
-        <div className="space-y-3 pt-2 border-t border-[#fff7dd]/15">
+        <div className="space-y-3 pt-2 border-t border-[#3b82f6]/20">
           {results.answer && (
-            <div className="rounded border border-[#c8ad86]/30 bg-[#0a0a0a] p-3 text-xs space-y-1">
-              <span className="font-mono text-[10px] uppercase text-[#c8ad86] font-bold">
+            <div className="rounded border border-[#3b82f6]/30 bg-[#0b1120] p-3 text-xs space-y-1">
+              <span className="font-mono text-[10px] uppercase text-[#38bdf8] font-bold">
                 Tavily AI Direct Answer Summary
               </span>
               <FormattedMarkdown content={results.answer} />
@@ -105,26 +105,26 @@ export function TavilySearchWidget({ defaultQuery = "" }: TavilySearchWidgetProp
           )}
 
           <div className="space-y-2">
-            <span className="text-[10px] font-mono uppercase text-[#66635f] tracking-wider block">
+            <span className="text-[10px] font-mono uppercase text-[#64748b] tracking-wider block">
               Top Web Sources ({results.results.length})
             </span>
             {results.results.map((item, idx) => (
               <div
                 key={idx}
-                className="rounded border border-[#fff7dd]/10 bg-[#0a0a0a] p-3 text-xs space-y-1 hover:border-[#c8ad86]/40 transition-colors"
+                className="rounded border border-[#3b82f6]/15 bg-[#0b1120] p-3 text-xs space-y-1 hover:border-[#38bdf8]/40 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
                   <a
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-[#fff7dd] hover:text-[#c8ad86] transition-colors inline-flex items-center gap-1.5 line-clamp-1"
+                    className="font-medium text-[#f8fafc] hover:text-[#38bdf8] transition-colors inline-flex items-center gap-1.5 line-clamp-1"
                   >
-                    {item.title} <ExternalLinkIcon className="h-3 w-3 text-[#66635f] shrink-0" />
+                    {item.title} <ExternalLinkIcon className="h-3 w-3 text-[#64748b] shrink-0" />
                   </a>
-                  <span className="text-[9px] font-mono text-[#66635f] shrink-0">{new URL(item.url).hostname}</span>
+                  <span className="text-[9px] font-mono text-[#64748b] shrink-0">{new URL(item.url).hostname}</span>
                 </div>
-                <p className="text-[11px] text-[#fff7dd]/70 leading-relaxed line-clamp-2">
+                <p className="text-[11px] text-[#cbd5e1] leading-relaxed line-clamp-2">
                   {item.content}
                 </p>
               </div>

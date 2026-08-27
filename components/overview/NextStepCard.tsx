@@ -57,20 +57,20 @@ export function NextStepCard({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-[#c8ad86]/40 bg-[#0a0a0a] p-5 shadow-2xl">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-[#3b82f6]/40 bg-[#050814] p-5 shadow-2xl">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[#c8ad86]/40 bg-[#121212] text-[#c8ad86]">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-[#3b82f6]/40 bg-[#0b1120] text-[#38bdf8]">
           {hasRequirements && hasArchitecture && hasRoadmap && hasDocuments ? (
             <CheckCircle2Icon className="h-5 w-5 text-emerald-400" />
           ) : (
-            <SparklesIcon className="h-5 w-5 text-[#c8ad86]" />
+            <SparklesIcon className="h-5 w-5 text-[#38bdf8]" />
           )}
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-[#fff7dd]">
+          <h3 className="text-sm font-semibold text-[#f8fafc]">
             {title}
           </h3>
-          <p className="mt-1 text-xs text-[#fff7dd]/70 max-w-xl leading-relaxed">
+          <p className="mt-1 text-xs text-[#cbd5e1] max-w-xl leading-relaxed">
             {description}
           </p>
         </div>
@@ -80,14 +80,14 @@ export function NextStepCard({
         {typeof action === "string" ? (
           <Link
             href={action}
-            className="inline-flex items-center gap-1.5 rounded border border-[#c8ad86] bg-[#c8ad86] px-4 py-2 text-xs font-semibold text-[#000000] hover:bg-[#b09570] transition-all"
+            className="inline-flex items-center gap-1.5 rounded bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1d4ed8] transition-all shadow-md shadow-blue-500/20"
           >
             {buttonLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
           </Link>
         ) : (
           <button
             onClick={action}
-            className="inline-flex items-center gap-1.5 rounded border border-[#c8ad86] bg-[#c8ad86] px-4 py-2 text-xs font-semibold text-[#000000] hover:bg-[#b09570] transition-all"
+            className="inline-flex items-center gap-1.5 rounded bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1d4ed8] transition-all shadow-md shadow-blue-500/20"
           >
             {buttonLabel} <ArrowRightIcon className="h-3.5 w-3.5" />
           </button>

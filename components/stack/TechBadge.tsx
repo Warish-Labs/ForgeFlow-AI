@@ -40,10 +40,11 @@ export function TechBadge({ name, onRemove, interactive = true }: TechBadgeProps
       <div
         onMouseEnter={() => interactive && setShowTooltip(true)}
         onMouseLeave={() => interactive && setShowTooltip(false)}
-        className="group inline-flex items-center gap-1.5 rounded-[100px] border border-[#c8ad86]/40 bg-[#0a0a0a] px-2.5 py-1 text-xs font-medium text-[#fff7dd] transition-all hover:border-[#c8ad86] hover:bg-[#121212]"
+        onClick={() => interactive && setShowTooltip((prev) => !prev)}
+        className="group inline-flex items-center gap-1.5 rounded-[100px] border border-[#3b82f6]/40 bg-[#050814] px-2.5 py-1 text-xs font-medium text-[#f8fafc] transition-all hover:border-[#3b82f6] hover:bg-[#0b1120] cursor-pointer"
       >
         <TechLogo name={name} className="h-3.5 w-3.5 shrink-0" />
-        <span className="font-mono text-[11px] text-[#fff7dd]">{name}</span>
+        <span className="font-mono text-[11px] text-[#f8fafc]">{name}</span>
 
         {onRemove && (
           <button
@@ -51,7 +52,7 @@ export function TechBadge({ name, onRemove, interactive = true }: TechBadgeProps
               e.stopPropagation();
               onRemove(name);
             }}
-            className="ml-0.5 rounded-full p-0.5 text-[#66635f] hover:bg-[#66635f]/30 hover:text-red-400"
+            className="ml-0.5 rounded-full p-0.5 text-[#64748b] hover:bg-red-950 hover:text-red-400"
             title={`Remove ${name}`}
           >
             ×
@@ -60,13 +61,13 @@ export function TechBadge({ name, onRemove, interactive = true }: TechBadgeProps
       </div>
 
       {showTooltip && (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-48 -translate-x-1/2 rounded border border-[#c8ad86]/40 bg-[#0a0a0a] p-2.5 shadow-2xl backdrop-blur-md">
-          <div className="flex items-center justify-between border-b border-[#fff7dd]/15 pb-1">
-            <span className="font-mono text-[10px] font-bold text-[#c8ad86] uppercase tracking-wider">
+        <div className="absolute bottom-full left-1/2 z-[100] mb-2 w-48 -translate-x-1/2 rounded-lg border border-[#3b82f6]/50 bg-[#050814] p-2.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95">
+          <div className="flex items-center justify-between border-b border-[#3b82f6]/20 pb-1">
+            <span className="font-mono text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider">
               {details.category}
             </span>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-[#fff7dd]/80">
+          <p className="mt-1 text-[11px] leading-relaxed text-[#cbd5e1]">
             {details.desc}
           </p>
         </div>

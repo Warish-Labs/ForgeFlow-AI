@@ -13,57 +13,57 @@ export function FormattedMarkdown({ content, className = "" }: FormattedMarkdown
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
-            <h1 className="text-sm font-bold text-[var(--color-candlelight-cream,#fff7dd)] mt-3 mb-1.5 pb-1 border-b border-[#fff7dd]/20">
+            <h1 className="text-sm font-bold text-[#f8fafc] mt-3 mb-1.5 pb-1 border-b border-[#3b82f6]/20">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-xs font-bold text-[var(--color-champagne-gold,#c8ad86)] mt-2.5 mb-1">
+            <h2 className="text-xs font-bold text-[#38bdf8] mt-2.5 mb-1">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-xs font-semibold text-[var(--color-candlelight-cream,#fff7dd)] mt-2 mb-1">
+            <h3 className="text-xs font-semibold text-[#f8fafc] mt-2 mb-1">
               {children}
             </h3>
           ),
           p: ({ children }) => (
-            <p className="mb-2 last:mb-0 text-[var(--color-candlelight-cream,#fff7dd)]/90 font-normal">
+            <p className="mb-2 last:mb-0 text-[#cbd5e1] font-normal leading-relaxed">
               {children}
             </p>
           ),
           strong: ({ children }) => (
-            <strong className="font-semibold text-[var(--color-champagne-gold,#c8ad86)]">
+            <strong className="font-semibold text-[#60a5fa]">
               {children}
             </strong>
           ),
           em: ({ children }) => (
-            <em className="italic text-[var(--color-candlelight-cream,#fff7dd)]/80">
+            <em className="italic text-[#cbd5e1]/80">
               {children}
             </em>
           ),
           ul: ({ children }) => (
-            <ul className="list-disc list-inside space-y-1 mb-2.5 text-[var(--color-candlelight-cream,#fff7dd)]/90">
+            <ul className="list-disc list-inside space-y-1 mb-2.5 text-[#cbd5e1]">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside space-y-1 mb-2.5 text-[var(--color-candlelight-cream,#fff7dd)]/90">
+            <ol className="list-decimal list-inside space-y-1 mb-2.5 text-[#cbd5e1]">
               {children}
             </ol>
           ),
           li: ({ children }) => (
-            <li className="leading-normal marker:text-[var(--color-champagne-gold,#c8ad86)]">
+            <li className="leading-normal marker:text-[#38bdf8]">
               {children}
             </li>
           ),
           code: ({ children }) => (
-            <code className="rounded bg-[#66635f]/30 px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-champagne-gold,#c8ad86)] border border-[#c8ad86]/20">
+            <code className="rounded bg-[#1e293b]/70 px-1.5 py-0.5 font-mono text-[11px] text-[#38bdf8] border border-[#3b82f6]/30">
               {children}
             </code>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="border-l-2 border-[var(--color-champagne-gold,#c8ad86)] pl-3 italic my-2 text-[var(--color-candlelight-cream,#fff7dd)]/70">
+            <blockquote className="border-l-2 border-[#3b82f6] pl-3 italic my-2 text-[#cbd5e1]/70">
               {children}
             </blockquote>
           ),
@@ -72,7 +72,7 @@ export function FormattedMarkdown({ content, className = "" }: FormattedMarkdown
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[var(--color-champagne-gold,#c8ad86)] underline hover:text-[var(--color-candlelight-cream,#fff7dd)] transition-colors"
+              className="text-[#38bdf8] underline hover:text-[#60a5fa] transition-colors"
             >
               {children}
             </a>

@@ -42,10 +42,10 @@ export function BlueprintProgressCard({
   ];
 
   return (
-    <div className="rounded-xl border border-[#c8ad86]/30 bg-[#000000] p-5 shadow-2xl space-y-4">
+    <div className="rounded-xl border border-[#3b82f6]/30 bg-[#050814] p-5 shadow-2xl space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-[#fff7dd]">
+          <h3 className="text-sm font-semibold text-[#f8fafc]">
             Blueprint Completeness Score
           </h3>
           <HelpTooltip
@@ -53,15 +53,15 @@ export function BlueprintProgressCard({
             text="Calculated score based on whether essential blueprint artifacts are saved in database."
           />
         </div>
-        <span className="font-mono text-sm font-bold text-[#c8ad86]">
+        <span className="font-mono text-sm font-bold text-[#38bdf8]">
           {totalScore}%
         </span>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#0a0a0a] border border-[#fff7dd]/15">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#0b1120] border border-[#3b82f6]/20">
         <div
-          className="h-full bg-gradient-to-r from-[#c8ad86] to-[#fff7dd] transition-all duration-500"
+          className="h-full bg-gradient-to-r from-[#2563eb] to-[#38bdf8] transition-all duration-500"
           style={{ width: `${totalScore}%` }}
         />
       </div>
@@ -73,9 +73,9 @@ export function BlueprintProgressCard({
             {step.completed ? (
               <CheckCircle2Icon className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
             ) : (
-              <CircleIcon className="h-3.5 w-3.5 text-[#66635f] shrink-0" />
+              <CircleIcon className="h-3.5 w-3.5 text-[#64748b] shrink-0" />
             )}
-            <span className={step.completed ? "text-[#fff7dd] font-medium" : "text-[#66635f]"}>
+            <span className={step.completed ? "text-[#f8fafc] font-medium" : "text-[#64748b]"}>
               {step.label}
             </span>
           </div>

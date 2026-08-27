@@ -68,11 +68,11 @@ export function TechStackManager({ projectId, initialStack }: TechStackManagerPr
   }
 
   return (
-    <div className="rounded-xl border border-[#c8ad86]/30 bg-[#000000] p-5 shadow-2xl space-y-4">
+    <div className="rounded-xl border border-[#3b82f6]/30 bg-[#050814] p-5 shadow-2xl space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <LayersIcon className="h-4 w-4 text-[#c8ad86]" />
-          <h3 className="text-sm font-semibold text-[#fff7dd]">
+          <LayersIcon className="h-4 w-4 text-[#38bdf8]" />
+          <h3 className="text-sm font-semibold text-[#f8fafc]">
             Interactive Technology Stack Manager
           </h3>
           <HelpTooltip
@@ -99,15 +99,15 @@ export function TechStackManager({ projectId, initialStack }: TechStackManagerPr
             />
           ))
         ) : (
-          <p className="text-xs text-[#66635f] italic">
+          <p className="text-xs text-[#64748b] italic">
             No technology stack tags configured. Choose from popular technologies below or add custom ones.
           </p>
         )}
       </div>
 
       {/* Quick Add Popular Suggestions */}
-      <div className="pt-2 border-t border-[#fff7dd]/10">
-        <p className="text-[10px] font-mono text-[#66635f] uppercase tracking-wider mb-2">
+      <div className="pt-2 border-t border-[#3b82f6]/15">
+        <p className="text-[10px] font-mono text-[#64748b] uppercase tracking-wider mb-2">
           Quick-Add Technology Suggestions
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -118,7 +118,7 @@ export function TechStackManager({ projectId, initialStack }: TechStackManagerPr
               <button
                 key={tech}
                 onClick={() => handleAddTech(tech)}
-                className="inline-flex items-center gap-1 rounded-full border border-[#fff7dd]/15 bg-[#0a0a0a] px-2 py-0.5 text-[10px] text-[#fff7dd]/70 hover:border-[#c8ad86] hover:text-[#c8ad86] transition-all"
+                className="inline-flex items-center gap-1 rounded-full border border-[#3b82f6]/20 bg-[#0b1120] px-2.5 py-0.5 text-[10px] text-[#cbd5e1] hover:border-[#38bdf8] hover:text-[#38bdf8] transition-all"
               >
                 <TechLogo name={tech} className="h-3 w-3" />
                 <span>+ {tech}</span>
@@ -134,16 +134,15 @@ export function TechStackManager({ projectId, initialStack }: TechStackManagerPr
           value={newTechInput}
           onChange={(e) => setNewTechInput(e.target.value)}
           placeholder="Add custom technology (e.g. Fastify, Rust, GraphQL)..."
-          className="flex-1 rounded border border-[#fff7dd]/20 bg-[#0a0a0a] px-3 py-1.5 text-xs text-[#fff7dd] placeholder-[#66635f] focus:border-[#c8ad86] focus:outline-none"
+          className="flex-1 rounded border border-[#3b82f6]/30 bg-[#0b1120] px-3 py-1.5 text-xs text-[#f8fafc] placeholder-[#64748b] focus:border-[#38bdf8] focus:outline-none"
           onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTech())}
         />
         <Button
           type="button"
-          variant="outline"
           size="sm"
           onClick={() => handleAddTech()}
           disabled={isSaving || !newTechInput.trim()}
-          className="border-[#c8ad86]/40 text-[#c8ad86] hover:bg-[#c8ad86]/10"
+          className="bg-[#2563eb] text-white hover:bg-[#1d4ed8] font-medium text-xs px-3"
         >
           <PlusIcon className="h-3.5 w-3.5 mr-1" /> Add Tech
         </Button>

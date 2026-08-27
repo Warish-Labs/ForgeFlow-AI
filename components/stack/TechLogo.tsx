@@ -174,5 +174,5 @@ export function TechLogo({ name, className = "h-4 w-4", size = 16 }: TechLogoPro
   }
 
   // Fallback icon for any tech name
-  return <CpuIcon className={`${className} text-[#c8ad86]`} />;
+  return <CpuIcon className={`${className} text-[#38bdf8]`} />;
 }

@@ -34,10 +34,10 @@ const statusMap: Record<
   ProjectStatus,
   { pillClass: string; label: string }
 > = {
-  PLANNING: { pillClass: "border-[#c8ad86] text-[#c8ad86]", label: "Planning" },
-  ARCHITECTURE: { pillClass: "border-blue-400 text-blue-300", label: "Architecture" },
+  PLANNING: { pillClass: "border-[#3b82f6] text-[#60a5fa]", label: "Planning" },
+  ARCHITECTURE: { pillClass: "border-sky-400 text-sky-300", label: "Architecture" },
   ROADMAP_READY: { pillClass: "border-emerald-400 text-emerald-300", label: "Roadmap Ready" },
-  EXPORTED: { pillClass: "border-purple-400 text-purple-300", label: "Exported" },
+  EXPORTED: { pillClass: "border-indigo-400 text-indigo-300", label: "Exported" },
 };
 
 export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
@@ -58,7 +58,7 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
       icon: LayoutDashboardIcon,
       exact: true,
       tooltipTitle: "Overview Tab",
-      tooltipText: "WHAT: Project dashboard showing completeness score, vision, tech stack manager, confirmed assumptions, and Tavily Live Search.",
+      tooltipText: "WHAT: Project overview showing completeness score, vision, tech stack manager, assumptions, and Tavily Live Search.",
     },
     {
       href: `/projects/${project.id}/requirements`,
@@ -114,13 +114,13 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
 
   return (
     <>
-      <header className="border-b border-[#fff7dd]/15 bg-[#000000] px-4 pt-4 md:px-6">
+      <header className="border-b border-[#3b82f6]/20 bg-[#000000] px-4 pt-4 md:px-6">
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/dashboard"
-                className="inline-flex h-8 w-8 items-center justify-center rounded border border-[#fff7dd]/20 bg-[#0a0a0a] text-[#66635f] transition-colors hover:border-[#c8ad86] hover:text-[#fff7dd]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-[#3b82f6]/30 bg-[#0b1120] text-[#64748b] transition-colors hover:border-[#38bdf8] hover:text-[#f8fafc]"
                 title="Back to Dashboard Workspaces"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -128,7 +128,7 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
 
               <div>
                 <div className="flex items-center gap-2.5">
-                  <h1 className="text-xl font-bold text-[#fff7dd]">
+                  <h1 className="text-xl font-bold text-[#f8fafc]">
                     {project.name}
                   </h1>
                   <span className={`pill-tag uppercase ${statusInfo.pillClass}`}>
@@ -156,7 +156,7 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
               <div className="inline-flex items-center gap-1">
                 <button
                   onClick={() => setIsChatOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded border border-[#c8ad86] bg-[#0a0a0a] px-3.5 py-1.5 text-xs font-semibold text-[#c8ad86] hover:bg-[#c8ad86] hover:text-[#000000] transition-all"
+                  className="inline-flex items-center gap-1.5 rounded border border-[#3b82f6] bg-[#0b1120] px-3.5 py-1.5 text-xs font-semibold text-[#38bdf8] hover:bg-[#2563eb] hover:text-white transition-all shadow-sm"
                   title="Open AI Architecture Copilot Chat"
                 >
                   <BotIcon className="h-3.5 w-3.5" />
@@ -183,8 +183,8 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
             </div>
           </div>
 
-          {/* Nav Tabs */}
-          <nav className="flex gap-1 overflow-x-auto border-t border-[#fff7dd]/15 pt-2">
+          {/* Nav Tabs (No overflow clipping for tooltips) */}
+          <nav className="flex gap-1 overflow-visible border-t border-[#3b82f6]/20 pt-2 flex-wrap sm:flex-nowrap">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = tab.exact
@@ -197,8 +197,8 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
                     href={tab.href}
                     className={`inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
                       isActive
-                        ? "border-[#c8ad86] text-[#c8ad86] bg-[#0a0a0a] rounded-t"
-                        : "border-transparent text-[#66635f] hover:border-[#fff7dd]/20 hover:text-[#fff7dd]"
+                        ? "border-[#38bdf8] text-[#38bdf8] bg-[#0b1120] rounded-t font-semibold"
+                        : "border-transparent text-[#64748b] hover:border-[#3b82f6]/30 hover:text-[#f8fafc]"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
