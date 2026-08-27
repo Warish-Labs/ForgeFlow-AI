@@ -10,6 +10,7 @@ import {
   RequirementSynthesisResult,
 } from "@/lib/validations/ai";
 import { SystemArchitectureSynthesisResult } from "@/lib/validations/architecture";
+import { RoadmapSynthesisResult } from "@/lib/validations/roadmap";
 
 /**
   * Define state channel annotation for LangGraph.js
@@ -32,6 +33,10 @@ export const ForgeFlowGraphState = Annotation.Root({
     default: () => null,
   }),
   architectureResult: Annotation<SystemArchitectureSynthesisResult | null>({
+    reducer: (x, y) => y ?? x,
+    default: () => null,
+  }),
+  roadmapResult: Annotation<RoadmapSynthesisResult | null>({
     reducer: (x, y) => y ?? x,
     default: () => null,
   }),

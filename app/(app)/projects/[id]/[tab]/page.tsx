@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { AnalyzeProjectButton } from "@/components/ai/AnalyzeProjectButton";
 import { GenerateArchitectureButton } from "@/components/architecture/GenerateArchitectureButton";
 import { DecisionCard } from "@/components/architecture/DecisionCard";
+import { GenerateRoadmapButton } from "@/components/roadmap/GenerateRoadmapButton";
+import { ExportBlueprintButton } from "@/components/roadmap/ExportBlueprintButton";
+import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
 import {
   ScrollTextIcon,
   SparklesIcon,
@@ -44,8 +47,8 @@ const tabMeta: Record<
     icon: LayersIcon,
   },
   roadmap: {
-    title: "Implementation Roadmap & Milestones",
-    desc: "Sequential delivery phases, dependencies, and milestone target dates.",
+    title: "Implementation Roadmap & Delivery Milestones",
+    desc: "Sequential delivery phases (MVP, Phase 2, Phase 3), dependency tree links, and blueprint export.",
     icon: DatabaseIcon,
   },
 };
@@ -96,16 +99,34 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
         <div className="flex items-center gap-2 shrink-0">
           {tab === "architecture" ? (
             <GenerateArchitectureButton projectId={project.id} variant="accent" size="sm" />
+          ) : tab === "roadmap" ? (
+            <>
+              <GenerateRoadmapButton projectId={project.id} variant="accent" size="sm" />
+              <ExportBlueprintButton projectId={project.id} variant="outline" size="sm" />
+            </>
           ) : (
             <AnalyzeProjectButton projectId={project.id} variant="accent" size="sm" />
           )}
         </div>
       </div>
 
+      {/* Roadmap Tab View */}
+      {tab === "roadmap" && (
+        <div className="space-y-6">
+          {project.roadmapItems.length > 0 ? (
+            <RoadmapTimeline items={project.roadmapItems} />
+          ) : (
+            <EmptyTabPlaceholder
+              title="No Delivery Roadmap Generated Yet"
+              desc="Click 'Generate Roadmap' above to synthesize sequential delivery milestones with prerequisite dependency tracking."
+            />
+          )}
+        </div>
+      )}
+
       {/* Architecture Tab View */}
       {tab === "architecture" && (
         <div className="space-y-6">
-          {/* Overview */}
           {archObj.overview && (
             <Card className="bg-[var(--navy-800)]/80 border-[var(--border-accent)]">
               <CardHeader className="pb-2">
@@ -121,7 +142,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             </Card>
           )}
 
-          {/* System Components Breakdown */}
           {archComponents.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -152,7 +172,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             </div>
           )}
 
-          {/* Entity Data Models */}
           {archModels.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -185,7 +204,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             </div>
           )}
 
-          {/* Architecture Decision Records (ADRs) */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
               <LayersIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Architecture Decision Records (ADRs)
@@ -320,38 +338,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             <EmptyTabPlaceholder
               title="No features generated yet"
               desc="Run the AI Requirement Synthesis node in Phase 2 to extract features automatically."
-            />
-          )}
-        </div>
-      )}
-
-      {/* Roadmap Tab */}
-      {tab === "roadmap" && (
-        <div className="space-y-4">
-          {project.roadmapItems.length > 0 ? (
-            project.roadmapItems.map((item) => (
-              <Card key={item.id} className="bg-[var(--navy-800)]/40">
-                <CardContent className="p-4 flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-[var(--accent-cyan)]">
-                        {item.phase}
-                      </span>
-                      <h4 className="text-sm font-semibold text-[var(--text-primary)]">
-                        {item.title}
-                      </h4>
-                    </div>
-                  </div>
-                  <Badge variant={item.status === "completed" ? "completed" : "in_progress"}>
-                    {item.status}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <EmptyTabPlaceholder
-              title="No roadmap items planned"
-              desc="Phase 4 AI Roadmap Generator will structure sequential delivery milestones."
             />
           )}
         </div>

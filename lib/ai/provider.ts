@@ -151,3 +151,57 @@ export function generateMockArchitectureSynthesis(projectName: string, techStack
   };
 }
 
+/**
+  * Mock generator for offline / local roadmap synthesis
+  */
+export function generateMockRoadmapSynthesis(projectName: string) {
+  return {
+    overview: `${projectName} sequential implementation roadmap organized into MVP release core, Phase 2 AI orchestration enhancements, and Phase 3 scaling milestones.`,
+    items: [
+      {
+        title: "Database Schema & Prisma ORM Migration",
+        phase: "MVP" as const,
+        status: "completed",
+        dependsOn: [],
+        estimatedDays: 1,
+      },
+      {
+        title: "Single-Tenant Clerk Auth & Ownership Guards",
+        phase: "MVP" as const,
+        status: "completed",
+        dependsOn: ["Database Schema & Prisma ORM Migration"],
+        estimatedDays: 2,
+      },
+      {
+        title: "Requirement Synthesis Agent Node & Zod Protection",
+        phase: "MVP" as const,
+        status: "completed",
+        dependsOn: ["Single-Tenant Clerk Auth & Ownership Guards"],
+        estimatedDays: 2,
+      },
+      {
+        title: "System Architecture ADR & Component Topology Generator",
+        phase: "PHASE_2" as const,
+        status: "in_progress",
+        dependsOn: ["Requirement Synthesis Agent Node & Zod Protection"],
+        estimatedDays: 3,
+      },
+      {
+        title: "Interactive Architecture Copilot Drawer & Live Chat",
+        phase: "PHASE_2" as const,
+        status: "todo",
+        dependsOn: ["System Architecture ADR & Component Topology Generator"],
+        estimatedDays: 2,
+      },
+      {
+        title: "Exportable Markdown Blueprint Compiler & Production Deployment",
+        phase: "PHASE_3" as const,
+        status: "todo",
+        dependsOn: ["Interactive Architecture Copilot Drawer & Live Chat"],
+        estimatedDays: 3,
+      },
+    ],
+  };
+}
+
+

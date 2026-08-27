@@ -92,6 +92,7 @@ model RoadmapItem {
   phase     FeaturePhase @default(MVP)
   status    String       @default("todo")
   dependsOn String[]
+  order     Int          @default(0)
 
   @@index([projectId])
 }
