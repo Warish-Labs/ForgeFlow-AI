@@ -1,0 +1,17 @@
+<svg viewBox="0 0 1100 1100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="forgeflowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38B6FF"/>
+      <stop offset="55%" stop-color="#1060EE"/>
+      <stop offset="100%" stop-color="#0A2A9C"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#forgeflowGrad)">
+    <rect x="170" y="860" width="520" height="150" rx="65"/>
+    <rect x="260" y="180" width="110" height="640" rx="55"/>
+    <rect x="260" y="180" width="440" height="95" rx="47"/>
+    <circle cx="770" cy="227" r="80"/>
+    <rect x="260" y="470" width="310" height="90" rx="45"/>
+    <circle cx="640" cy="515" r="70"/>
+  </g>
+</svg>

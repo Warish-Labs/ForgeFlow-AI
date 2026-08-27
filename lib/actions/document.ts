@@ -186,7 +186,7 @@ export async function updateDocumentContentAction(
 
   try {
     const existing = await prisma.document.findFirst({
-      where: { id: documentId, ownerId: userId },
+      where: { id: documentId, project: { ownerId: userId } },
     });
 
     if (!existing) {
@@ -222,7 +222,7 @@ export async function deleteDocumentAction(
 
   try {
     const existing = await prisma.document.findFirst({
-      where: { id: documentId, ownerId: userId },
+      where: { id: documentId, project: { ownerId: userId } },
     });
 
     if (!existing) {
@@ -249,7 +249,10 @@ export async function getProjectDocumentsAction(projectId: string) {
   if (!userId) return [];
 
   return await prisma.document.findMany({
-    where: { projectId, ownerId: userId },
+    where: {
+      projectId,
+      project: { ownerId: userId },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
