@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og";
 
-// App icon displayed in browser tabs and as favicon
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
@@ -14,16 +13,18 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #1a6fff 0%, #00d4ff 100%)",
+          background: "linear-gradient(135deg, #070a14 0%, #0d1220 100%)",
+          border: "1.5px solid #1060ee",
           borderRadius: 8,
+          boxShadow: "0 0 10px rgba(16, 96, 238, 0.5)",
         }}
       >
         <span
           style={{
-            color: "white",
-            fontSize: 14,
-            fontWeight: 700,
-            fontFamily: "monospace",
+            color: "#38b6ff",
+            fontSize: 15,
+            fontWeight: 800,
+            fontFamily: "sans-serif",
             letterSpacing: "-0.5px",
           }}
         >

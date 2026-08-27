@@ -8,9 +8,9 @@ interface LogoProps {
 }
 
 const sizeMap = {
-  sm: { img: 26, badge: "h-7 w-7", text: "text-sm" },
-  md: { img: 32, badge: "h-9 w-9", text: "text-base" },
-  lg: { img: 44, badge: "h-12 w-12", text: "text-xl" },
+  sm: { img: 36, badge: "h-10 w-10", text: "text-lg" },
+  md: { img: 44, badge: "h-12 w-12", text: "text-xl" },
+  lg: { img: 56, badge: "h-16 w-16", text: "text-2xl" },
 };
 
 export function Logo({ className, size = "md", showText = true }: LogoProps) {
@@ -24,7 +24,7 @@ export function Logo({ className, size = "md", showText = true }: LogoProps) {
           alt="ForgeFlow AI Logo"
           width={sizes.img}
           height={sizes.img}
-          className="h-auto w-auto object-contain transition-transform hover:scale-105"
+          className="h-auto w-auto object-contain transition-transform hover:scale-105 drop-shadow-[0_0_8px_rgba(56,182,255,0.4)]"
           priority
         />
       </div>

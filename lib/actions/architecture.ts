@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { architectureSynthesisNode } from "@/lib/ai/nodes/architectureNode";
+import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { ActionResult } from "@/lib/actions/ai";
 
 /**
@@ -17,6 +18,15 @@ export async function generateArchitectureAction(
     return {
       success: false,
       error: { code: "UNAUTHORIZED", message: "Authentication required" },
+    };
+  }
+
+  // Quota Guard Check
+  const quotaCheck = await checkUserAiQuotaAction(userId);
+  if (!quotaCheck.allowed) {
+    return {
+      success: false,
+      error: quotaCheck.error!,
     };
   }
 
@@ -78,16 +88,19 @@ export async function generateArchitectureAction(
         },
       });
 
-      // Log AI Usage
-      await tx.aiUsageLog.create({
-        data: {
-          projectId,
-          operation: "architecture",
-          provider: process.env.LLM_PROVIDER || "groq",
-          durationMs: Date.now() - startTime,
-          status: "success",
-        },
-      });
+    });
+
+    await logAiUsageAction({
+      userId,
+      projectId,
+      operation: "architecture",
+      provider: (process.env.LLM_PROVIDER as any) || "groq",
+      model: "llama-3.3-70b-versatile",
+      promptTokens: 1000,
+      completionTokens: 800,
+      totalTokens: 1800,
+      durationMs: Date.now() - startTime,
+      status: "success",
     });
 
     revalidatePath(`/projects/${projectId}`);

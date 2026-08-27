@@ -68,10 +68,13 @@ export function AnalyzeProjectButton({
           </>
         )}
       </Button>
+      <span className="text-[9px] font-mono font-medium px-1.5 py-0.5 rounded bg-[#1060ee]/15 text-[#38b6ff] border border-[#1060ee]/30">
+        Uses AI Quota
+      </span>
       {showTooltip && (
         <HelpTooltip
           title="Analyze Vision Action"
-          text="WHAT: AI parses your software idea vision statement. WHEN: Right after creating a project or updating your vision. OUTPUT: Problem statement, functional requirements, non-functional requirements, and initial feature list."
+          text="WHAT: AI parses your software idea vision statement. WHEN: Right after creating a project or updating your vision. OUTPUT: Problem statement, functional requirements, non-functional requirements, and initial feature list. Consumes monthly AI token quota."
           side="bottom"
         />
       )}

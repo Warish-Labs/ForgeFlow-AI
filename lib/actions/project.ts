@@ -3,6 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { checkUserCanCreateProjectAction } from "@/lib/services/quota";
+import { logAuditEventAction } from "@/lib/services/audit";
 import {
   createProjectSchema,
   updateProjectSchema,
@@ -27,6 +29,15 @@ export async function createProjectAction(
     return {
       success: false,
       error: { code: "UNAUTHORIZED", message: "You must be signed in to create a project" },
+    };
+  }
+
+  // 0. Quota check: Enforce free tier max projects limit
+  const projectQuotaCheck = await checkUserCanCreateProjectAction(userId);
+  if (!projectQuotaCheck.allowed) {
+    return {
+      success: false,
+      error: projectQuotaCheck.error!,
     };
   }
 
@@ -58,6 +69,12 @@ export async function createProjectAction(
     });
 
     revalidatePath("/dashboard");
+    await logAuditEventAction({
+      userId,
+      projectId: project.id,
+      action: "PROJECT_CREATED",
+      metadata: { name: project.name },
+    });
     return { success: true, data: project };
   } catch (error) {
     console.error("Error creating project:", error);

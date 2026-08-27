@@ -161,3 +161,21 @@ body {
   letter-spacing: 0.3px;
   padding: 4px 10px;
 }
+
+/* ── Glow Effects System ─────────────────────────────────────────────────── */
+.glow-primary {
+  box-shadow: 0 0 25px -5px rgba(56, 182, 255, 0.4);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 25px -5px rgba(16, 96, 238, 0.4);
+}
+
+.glow-card {
+  box-shadow: 0 0 35px -10px rgba(16, 96, 238, 0.25);
+}
+
+.glow-success {
+  box-shadow: 0 0 25px -5px rgba(47, 230, 176, 0.4);
+}
+

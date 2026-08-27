@@ -1,6 +1,7 @@
 {
   "name": "forgeflow-ai",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "ForgeFlow AI - Agentic software architecture platform with persistent state management",
   "private": true,
   "engines": {
     "node": ">=20.9"

@@ -3,6 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
+import { logAuditEventAction } from "@/lib/services/audit";
 
 export type ActionResult<T> =
   | { success: true; data: T }
@@ -44,6 +46,17 @@ export async function generateDocumentAction(
   if (!userId) {
     return { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } };
   }
+
+  // Quota Guard Check
+  const quotaCheck = await checkUserAiQuotaAction(userId);
+  if (!quotaCheck.allowed) {
+    return {
+      success: false,
+      error: quotaCheck.error!,
+    };
+  }
+
+  const startTime = Date.now();
 
   try {
     const project = await prisma.project.findFirst({
@@ -165,6 +178,26 @@ export async function generateDocumentAction(
       });
     }
 
+    await logAiUsageAction({
+      userId,
+      projectId,
+      operation: "document",
+      provider: (process.env.LLM_PROVIDER as any) || "groq",
+      model: "llama-3.3-70b-versatile",
+      promptTokens: 600,
+      completionTokens: 500,
+      totalTokens: 1100,
+      durationMs: Date.now() - startTime,
+      status: "success",
+    });
+
+    await logAuditEventAction({
+      userId,
+      projectId,
+      action: "DOCUMENT_GENERATED",
+      metadata: { docType, title: doc.title },
+    });
+
     revalidatePath(`/projects/${projectId}/documents`);
     return { success: true, data: { documentId: doc.id, content: doc.content } };
   } catch (error: any) {
@@ -200,6 +233,13 @@ export async function updateDocumentContentAction(
         content,
         status: "Edited",
       },
+    });
+
+    await logAuditEventAction({
+      userId,
+      projectId: existing.projectId,
+      action: "DOCUMENT_EDITED",
+      metadata: { documentId, type: existing.type },
     });
 
     revalidatePath(`/projects/${existing.projectId}/documents`);

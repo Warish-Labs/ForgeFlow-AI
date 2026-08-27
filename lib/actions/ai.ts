@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { createSynthesisGraph } from "@/lib/ai/graph";
 import { getLlmClient } from "@/lib/ai/provider";
 import { searchTavily } from "@/lib/tools/tavily";
+import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 
 export type ActionResult<T> =
@@ -64,6 +65,15 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
     return {
       success: false,
       error: { code: "UNAUTHORIZED", message: "You must be signed in to analyze a project" },
+    };
+  }
+
+  // Quota Guard Check
+  const quotaCheck = await checkUserAiQuotaAction(userId);
+  if (!quotaCheck.allowed) {
+    return {
+      success: false,
+      error: quotaCheck.error!,
     };
   }
 
@@ -146,14 +156,17 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
       }
     });
 
-    await prisma.aiUsageLog.create({
-      data: {
-        projectId,
-        operation: "analyze",
-        provider: process.env.LLM_PROVIDER || "groq",
-        durationMs: Date.now() - startTime,
-        status: "success",
-      },
+    await logAiUsageAction({
+      userId,
+      projectId,
+      operation: "analyze",
+      provider: (process.env.LLM_PROVIDER as any) || "groq",
+      model: "llama-3.3-70b-versatile",
+      promptTokens: 800,
+      completionTokens: 600,
+      totalTokens: 1400,
+      durationMs: Date.now() - startTime,
+      status: "success",
     });
 
     revalidatePath(`/projects/${projectId}`);
@@ -179,6 +192,15 @@ export async function sendChatMessageAction(
     return {
       success: false,
       error: { code: "UNAUTHORIZED", message: "You must be signed in to use ForgeFlow Agent Copilot" },
+    };
+  }
+
+  // Quota Guard Check
+  const quotaCheck = await checkUserAiQuotaAction(userId);
+  if (!quotaCheck.allowed) {
+    return {
+      success: false,
+      error: quotaCheck.error!,
     };
   }
 
@@ -354,6 +376,18 @@ You must not answer anything outside this project scope — general knowledge, c
         role: "assistant",
         content: assistantReply,
       },
+    });
+
+    await logAiUsageAction({
+      userId,
+      projectId,
+      operation: "chat",
+      provider: (process.env.LLM_PROVIDER as any) || "groq",
+      model: "llama-3.3-70b-versatile",
+      promptTokens: 350,
+      completionTokens: 250,
+      totalTokens: 600,
+      status: "success",
     });
 
     return {

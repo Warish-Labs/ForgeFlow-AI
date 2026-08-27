@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { checkIsSuperAdminAction } from "@/lib/auth/admin";
 import { getUserProjectsAction } from "@/lib/actions/project";
+import { getUserQuotaUsageAction } from "@/lib/services/quota";
 import { DashboardClient } from "./DashboardClient";
 
 export const metadata: Metadata = {
@@ -10,8 +14,22 @@ export const metadata: Metadata = {
 // Force dynamic rendering since projects depend on auth session
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-  const projects = await getUserProjectsAction();
+interface DashboardPageProps {
+  searchParams: Promise<{ view?: string }>;
+}
 
-  return <DashboardClient initialProjects={projects} />;
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const { userId } = await auth();
+  const resolvedParams = await searchParams;
+  const { isAdmin } = await checkIsSuperAdminAction();
+
+  // If logged in as Super Admin and not explicitly requesting portfolio view, redirect to Super Admin Panel
+  if (isAdmin && resolvedParams?.view !== "portfolio") {
+    redirect("/admin");
+  }
+
+  const projects = await getUserProjectsAction();
+  const usage = await getUserQuotaUsageAction(userId || "system");
+
+  return <DashboardClient initialProjects={projects} usage={usage} />;
 }

@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { roadmapSynthesisNode } from "@/lib/ai/nodes/roadmapNode";
+import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { ActionResult } from "@/lib/actions/ai";
 
 /**
@@ -17,6 +18,15 @@ export async function generateRoadmapAction(
     return {
       success: false,
       error: { code: "UNAUTHORIZED", message: "Authentication required" },
+    };
+  }
+
+  // Quota Guard Check
+  const quotaCheck = await checkUserAiQuotaAction(userId);
+  if (!quotaCheck.allowed) {
+    return {
+      success: false,
+      error: quotaCheck.error!,
     };
   }
 
@@ -73,16 +83,19 @@ export async function generateRoadmapAction(
         data: { status: "EXPORTED" },
       });
 
-      // Log AI Usage
-      await tx.aiUsageLog.create({
-        data: {
-          projectId,
-          operation: "roadmap",
-          provider: process.env.LLM_PROVIDER || "groq",
-          durationMs: Date.now() - startTime,
-          status: "success",
-        },
-      });
+    });
+
+    await logAiUsageAction({
+      userId,
+      projectId,
+      operation: "roadmap",
+      provider: (process.env.LLM_PROVIDER as any) || "groq",
+      model: "llama-3.3-70b-versatile",
+      promptTokens: 900,
+      completionTokens: 700,
+      totalTokens: 1600,
+      durationMs: Date.now() - startTime,
+      status: "success",
     });
 
     revalidatePath(`/projects/${projectId}`);

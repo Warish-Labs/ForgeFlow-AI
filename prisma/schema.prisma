@@ -143,15 +143,37 @@ model Document {
 // ─── Observability ───────────────────────────────────────────────────────────
 
 model AiUsageLog {
-  id         String   @id @default(cuid())
-  projectId  String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  operation  String   // "chat" | "analyze" | "architecture" | "roadmap" | "validate"
-  provider   String   // "groq" | "gemini"
-  durationMs Int
-  status     String   // "success" | "error" | "retried"
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String   @default("system")
+  projectId        String?
+  project          Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  operation        String   // "chat" | "analyze" | "architecture" | "roadmap" | "document"
+  provider         String   // "groq" | "gemini" | "tavily"
+  model            String?
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  durationMs       Int      @default(0)
+  status           String   // "success" | "error" | "quota_exceeded"
+  createdAt        DateTime @default(now())
 
+  @@index([userId])
+  @@index([userId, createdAt])
   @@index([projectId])
-  @@index([projectId, createdAt])
 }
+
+// ─── System & Admin Audit Log ───────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String?
+  action    String   // "PROJECT_CREATED" | "PROJECT_DELETED" | "AI_QUOTA_TRIGGERED" | "ADMIN_ACCESS" | "DOCUMENT_GENERATED" | "DOCUMENT_EDITED"
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+

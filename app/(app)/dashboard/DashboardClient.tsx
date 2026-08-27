@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
@@ -18,6 +18,10 @@ import {
   LayersIcon,
   FileCheckIcon,
 } from "lucide-react";
+
+import { UsageDashboardCard } from "@/components/dashboard/UsageDashboardCard";
+import { PremiumComingSoonModal } from "@/components/ui/PremiumComingSoonModal";
+import { QuotaUsageResult } from "@/lib/services/quota";
 
 interface ProjectItem {
   id: string;
@@ -37,6 +41,7 @@ interface ProjectItem {
 
 interface DashboardClientProps {
   initialProjects: ProjectItem[];
+  usage?: QuotaUsageResult;
 }
 
 const statusMap: Record<
@@ -62,11 +67,22 @@ function formatRelativeTime(dateInput: Date | string): string {
   return `${diffDays}d ago`;
 }
 
-export function DashboardClient({ initialProjects }: DashboardClientProps) {
+export function DashboardClient({ initialProjects, usage }: DashboardClientProps) {
   const [projects] = useState<ProjectItem[]>(initialProjects);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchInput]);
 
   const filteredProjects = projects.filter((p) => {
     const matchesSearch =
@@ -110,7 +126,13 @@ export function DashboardClient({ initialProjects }: DashboardClientProps) {
             </div>
 
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                if (usage && usage.projectsCount >= usage.maxProjects) {
+                  setIsPremiumModalOpen(true);
+                } else {
+                  setIsModalOpen(true);
+                }
+              }}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1060ee] px-6 py-3 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all shrink-0 shadow-lg shadow-blue-500/25 hover:scale-105"
             >
               <PlusIcon className="h-4 w-4" />
@@ -153,14 +175,17 @@ export function DashboardClient({ initialProjects }: DashboardClientProps) {
             </div>
           </div>
 
+          {/* Account AI Usage & Plan Limits Card */}
+          {usage && <UsageDashboardCard usage={usage} />}
+
           {/* Search & Filter bar */}
           <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
             <div className="relative flex-1 w-full">
               <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5c6980]" />
               <input
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search projects by title, prompt vision, or tech stack..."
                 className="w-full rounded-xl border border-[#1b2338] bg-[#070a14] pl-10 pr-4 py-2 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
               />
@@ -295,7 +320,13 @@ export function DashboardClient({ initialProjects }: DashboardClientProps) {
                 : "You haven't created any software blueprints yet. Click below to create your first blueprint."}
             </p>
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                if (usage && usage.projectsCount >= usage.maxProjects) {
+                  setIsPremiumModalOpen(true);
+                } else {
+                  setIsModalOpen(true);
+                }
+              }}
               className="inline-flex items-center gap-2 rounded-xl bg-[#1060ee] px-5 py-2.5 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all mt-2"
             >
               <PlusIcon className="h-4 w-4" /> Create New Blueprint
@@ -305,10 +336,16 @@ export function DashboardClient({ initialProjects }: DashboardClientProps) {
 
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       <CreateProjectModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+      <PremiumComingSoonModal
+        isOpen={isPremiumModalOpen}
+        onClose={() => setIsPremiumModalOpen(false)}
+        title="1 Project Limit Reached (Free Tier)"
+        description="Free users can maintain 1 active software architecture blueprint. Upgrade to Premium for unlimited project workspaces."
       />
     </div>
   );
