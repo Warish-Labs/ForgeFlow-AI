@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /sign-in
+Allow: /sign-up
+Disallow: /dashboard
+Disallow: /projects/
+
+Sitemap: https://forgeflow-ai.vercel.app/sitemap.xml
