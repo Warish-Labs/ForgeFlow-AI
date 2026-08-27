@@ -1,18 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { SparklesIcon } from "lucide-react";
-
-function GithubIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fillRule="evenodd"
-        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-        clipRule="evenodd"
-      />
-    </svg>
-  );
-}
+import { SparklesIcon, ShieldCheckIcon } from "lucide-react";
 
 export function Footer() {
   return (
@@ -24,7 +12,7 @@ export function Footer() {
             <div className="flex items-center gap-2.5">
               <Image
                 src="/Logo/forgeflow-logo-flat.svg"
-                alt="ForgeFlow AI"
+                alt="ForgeFlow AI Logo"
                 width={24}
                 height={24}
                 className="h-6 w-6"
@@ -34,7 +22,7 @@ export function Footer() {
               </span>
             </div>
             <p className="max-w-sm text-[#9aa4b8] leading-relaxed">
-              Agentic software architecture platform. Transforms raw ideas into structured, reasoned, production-ready project blueprints with persistent state.
+              Agentic software architecture platform. Transforms raw software vision prompts into structured, reasoned, production-ready project blueprints with persistent state.
             </p>
             <div className="flex items-center gap-2 text-[11px] text-[#5c6980]">
               <span>Built by</span>
@@ -49,25 +37,25 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Product Navigation Column */}
+          {/* Platform Navigation */}
           <div className="space-y-3">
             <h4 className="font-mono text-[11px] uppercase tracking-wider text-[#f3f6fc] font-semibold">
-              Product
+              Platform & Features
             </h4>
             <ul className="space-y-2">
               <li>
-                <a href="#features" className="hover:text-[#38b6ff] transition-colors">
-                  Platform Features
+                <Link href="/about" className="hover:text-[#38b6ff] transition-colors">
+                  About ForgeFlow AI
+                </Link>
+              </li>
+              <li>
+                <a href="/#features" className="hover:text-[#38b6ff] transition-colors">
+                  System Features
                 </a>
               </li>
               <li>
-                <a href="#how-it-works" className="hover:text-[#38b6ff] transition-colors">
-                  How It Works
-                </a>
-              </li>
-              <li>
-                <a href="#stack" className="hover:text-[#38b6ff] transition-colors">
-                  Tech Engine Specs
+                <a href="/#how-it-works" className="hover:text-[#38b6ff] transition-colors">
+                  Architecture Pipeline
                 </a>
               </li>
               <li>
@@ -78,36 +66,36 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Resources Column */}
+          {/* Legal & Compliance Column */}
           <div className="space-y-3">
             <h4 className="font-mono text-[11px] uppercase tracking-wider text-[#f3f6fc] font-semibold">
-              Resources & Code
+              Company & Legal
             </h4>
             <ul className="space-y-2">
               <li>
                 <a
-                  href="https://github.com/warishlabs/ForgeFlow-AI"
+                  href="https://warishlabs.in/contact"
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 hover:text-[#38b6ff] transition-colors"
+                  className="hover:text-[#38b6ff] transition-colors font-medium text-[#38b6ff]"
                 >
-                  <GithubIcon className="h-3.5 w-3.5" /> GitHub Repository
+                  Contact Us ↗
                 </a>
               </li>
               <li>
-                <a
-                  href="https://github.com/warishlabs/ForgeFlow-AI#readme"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-[#38b6ff] transition-colors"
-                >
-                  Documentation & Architecture
-                </a>
+                <Link href="/privacy" className="hover:text-[#38b6ff] transition-colors">
+                  Privacy Policy
+                </Link>
               </li>
               <li>
-                <span className="inline-flex items-center gap-1 text-[#2fe6b0] font-mono text-[10px]">
-                  <SparklesIcon className="h-3 w-3" /> LangGraph.js Powered
-                </span>
+                <Link href="/terms" className="hover:text-[#38b6ff] transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/disclaimer" className="hover:text-[#38b6ff] transition-colors">
+                  Disclaimer Notice
+                </Link>
               </li>
             </ul>
           </div>
@@ -119,8 +107,8 @@ export function Footer() {
             © {new Date().getFullYear()} ForgeFlow AI — Built by WarishLabs. All rights reserved.
           </div>
           <div className="flex items-center gap-4">
-            <span className="rounded-full border border-[#1b2338] bg-[#0d1220] px-3 py-1 font-mono text-[10px] text-[#2fe6b0]">
-              Free to try — no credit card required
+            <span className="rounded-full border border-[#1b2338] bg-[#0d1220] px-3 py-1 font-mono text-[10px] text-[#2fe6b0] flex items-center gap-1">
+              <ShieldCheckIcon className="h-3 w-3" /> Persistent Project State
             </span>
           </div>
         </div>

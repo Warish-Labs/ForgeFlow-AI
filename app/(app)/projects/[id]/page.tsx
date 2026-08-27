@@ -5,7 +5,6 @@ import { BlueprintProgressCard } from "@/components/overview/BlueprintProgressCa
 import { NextStepCard } from "@/components/overview/NextStepCard";
 import { TechStackManager } from "@/components/stack/TechStackManager";
 import { AssumptionsAndQuestions } from "@/components/overview/AssumptionsAndQuestions";
-import { TavilySearchWidget } from "@/components/search/TavilySearchWidget";
 import {
   SparklesIcon,
   LayersIcon,
@@ -71,9 +70,6 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
         hasRoadmap={hasRoadmap}
         documentsCount={documentCount}
       />
-
-      {/* Tavily Live Web Search Widget */}
-      <TavilySearchWidget defaultQuery={`${project.name} technology stack`} />
 
       {/* Stat Grid */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

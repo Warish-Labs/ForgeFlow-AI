@@ -1,39 +1,53 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { ProposalCard } from "@/components/ai/ProposalCard";
+import { ClarificationModal } from "@/components/ai/ClarificationModal";
 import { ProposalPayload } from "@/lib/actions/ai";
 
 interface FormattedMarkdownProps {
   content: string;
   projectId?: string;
   className?: string;
+  onSendClarificationAnswer?: (answer: string) => void;
 }
 
 export function FormattedMarkdown({
   content,
   projectId,
   className = "",
+  onSendClarificationAnswer,
 }: FormattedMarkdownProps) {
   // Parse any JSON proposal block embedded in the AI response
   let proposalData: ProposalPayload | null = null;
+  let clarificationData: { question: string; options?: string[] } | null = null;
   let markdownContent = content;
 
   const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
   if (jsonMatch && jsonMatch[1]) {
     try {
       const parsed = JSON.parse(jsonMatch[1]);
-      if (parsed.type && parsed.summary && parsed.targetField) {
+      if (parsed.type === "CLARIFICATION_NEEDED" && parsed.question) {
+        clarificationData = { question: parsed.question, options: parsed.options };
+        markdownContent = content.replace(/```json\s*([\s\S]*?)\s*```/, "").trim();
+      } else if (parsed.type && parsed.summary && parsed.targetField) {
         proposalData = parsed as ProposalPayload;
-        // Strip the raw json code block so user doesn't see raw json
         markdownContent = content.replace(/```json\s*([\s\S]*?)\s*```/, "").trim();
       }
     } catch {
       // Ignore JSON parse errors
     }
   }
+
+  const [isClarificationOpen, setIsClarificationOpen] = useState(false);
+
+  useEffect(() => {
+    if (clarificationData) {
+      setIsClarificationOpen(true);
+    }
+  }, [content]);
 
   return (
     <div className={`prose prose-invert max-w-none text-xs leading-relaxed ${className}`}>
@@ -126,6 +140,21 @@ export function FormattedMarkdown({
       {/* Render Proposal Card if parsed */}
       {proposalData && projectId && (
         <ProposalCard projectId={projectId} proposal={proposalData} />
+      )}
+
+      {/* Render Clarification Pop-Up Modal if triggered */}
+      {clarificationData && (
+        <ClarificationModal
+          isOpen={isClarificationOpen}
+          question={clarificationData.question}
+          options={clarificationData.options}
+          onClose={() => setIsClarificationOpen(false)}
+          onSubmitAnswer={(answer) => {
+            if (onSendClarificationAnswer) {
+              onSendClarificationAnswer(answer);
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -25,14 +25,22 @@ export function Navbar() {
         </Link>
 
         <div className="flex items-center gap-6 text-xs font-medium text-[#9aa4b8]">
-          <a href="#features" className="hover:text-[#38b6ff] transition-colors">
+          <Link href="/about" className="hover:text-[#38b6ff] transition-colors">
+            About Us
+          </Link>
+          <a href="/#features" className="hover:text-[#38b6ff] transition-colors">
             Platform Features
           </a>
-          <a href="#how-it-works" className="hover:text-[#38b6ff] transition-colors">
+          <a href="/#how-it-works" className="hover:text-[#38b6ff] transition-colors">
             How It Works
           </a>
-          <a href="#stack" className="hover:text-[#38b6ff] transition-colors">
-            Tech Engine
+          <a
+            href="https://warishlabs.in/contact"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-[#38b6ff] transition-colors text-[#38b6ff]"
+          >
+            Contact ↗
           </a>
 
           {userId ? (

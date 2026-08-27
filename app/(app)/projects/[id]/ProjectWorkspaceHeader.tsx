@@ -21,6 +21,7 @@ import {
   HammerIcon,
   CircleDotIcon,
   PackageCheckIcon,
+  PaletteIcon,
 } from "lucide-react";
 
 interface WorkspaceHeaderProps {
@@ -82,6 +83,13 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
       icon: MapIcon,
       tooltipTitle: "Roadmap Tab",
       tooltipText: "WHAT: Sequential milestone timeline with prerequisite task dependency links for build execution.",
+    },
+    {
+      href: `/projects/${project.id}/design`,
+      label: "UI Design",
+      icon: PaletteIcon,
+      tooltipTitle: "UI Design & Prompt Mockups Tab",
+      tooltipText: "WHAT: Upload or edit a Markdown design prompt (.md) to synthesize UI color tokens, component guidelines, and live visual mockups.",
     },
     {
       href: `/projects/${project.id}/documents`,

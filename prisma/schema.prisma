@@ -127,7 +127,7 @@ model Document {
   id        String   @id @default(cuid())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  ownerId   String
+  ownerId   String?  @default("")
   type      String   // "PRD" | "REQUIREMENTS" | "FEATURES" | "STACK" | "ARCHITECTURE" | "ADRS" | "DATABASE" | "SECURITY" | "ROADMAP" | "BLUEPRINT"
   title     String
   content   String

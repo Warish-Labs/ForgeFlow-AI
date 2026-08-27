@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/ui/Footer";
+import { AnimatedHeroLogo } from "@/components/marketing/AnimatedHeroLogo";
 import {
   CompassIcon,
   ListChecksIcon,
@@ -14,9 +14,9 @@ import {
   ArrowRightIcon,
   CheckCircle2Icon,
   XCircleIcon,
-  DatabaseIcon,
   LockIcon,
   CpuIcon,
+  PaletteIcon,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -25,7 +25,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <Navbar />
 
-      {/* ── Section 1: Hero ─────────────────────────────────────────────────── */}
+      {/* ── Section 1: Hero with Animated Logo Construction ───────────────── */}
       <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28 border-b border-[#1b2338]">
         {/* Glow backdrop */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[350px] w-[500px] rounded-full bg-[#1060ee]/20 blur-[120px] pointer-events-none" />
@@ -34,19 +34,12 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-[1200px] px-6 text-center space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-[#38b6ff]/30 bg-[#1060ee]/10 px-4 py-1 text-xs font-semibold text-[#38b6ff] shadow-sm">
             <SparklesIcon className="h-3.5 w-3.5" />
-            FORGEFLOW AI PLATFORM PASS 2
+            FORGEFLOW AI PLATFORM
           </div>
 
-          {/* Logo Hero Graphic */}
+          {/* Sequential Animated Building Logo */}
           <div className="flex justify-center pt-2">
-            <Image
-              src="/Logo/forgeflow-logo-gradient.svg"
-              alt="ForgeFlow AI Gradient Mark"
-              width={80}
-              height={80}
-              priority
-              className="h-20 w-20 drop-shadow-[0_0_25px_rgba(56,182,255,0.4)]"
-            />
+            <AnimatedHeroLogo />
           </div>
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-[#f3f6fc] max-w-4xl mx-auto leading-tight">
@@ -83,7 +76,7 @@ export default function LandingPage() {
               Why Project State Beats Chat History
             </h2>
             <p className="text-xs md:text-sm text-[#9aa4b8] max-w-xl mx-auto">
-              Generic chat windows output disposable text that gets forgotten. ForgeFlow maintains a single source of truth saved in PostgreSQL.
+              Generic chat windows output disposable text that gets forgotten. ForgeFlow maintains a single source of truth saved in a relational database.
             </p>
           </div>
 
@@ -154,7 +147,7 @@ export default function LandingPage() {
                 step: "01",
                 icon: CompassIcon,
                 title: "Describe Vision",
-                desc: "Enter a high-level one-line prompt explaining what you want to build.",
+                desc: "Enter a high-level software concept or prompt explaining what you want to build.",
               },
               {
                 step: "02",
@@ -178,7 +171,7 @@ export default function LandingPage() {
                 step: "05",
                 icon: FileTextIcon,
                 title: "Export Specs",
-                desc: "Download 10 structured Markdown specs ready for developer handoff.",
+                desc: "Download structured Markdown specs ready for developer handoff.",
               },
             ].map((st) => {
               const Icon = st.icon;
@@ -230,6 +223,11 @@ export default function LandingPage() {
                 desc: "Get framework recommendations with explicit trade-offs and alternatives.",
               },
               {
+                icon: PaletteIcon,
+                title: "UI Design & Prompt Mockups",
+                desc: "Generate UI component guidelines and color palettes from markdown prompts.",
+              },
+              {
                 icon: ScrollTextIcon,
                 title: "Searchable Decision Log",
                 desc: "Maintain immutable ADR records explaining why technical choices were made.",
@@ -248,11 +246,6 @@ export default function LandingPage() {
                 icon: FileTextIcon,
                 title: "Markdown Export",
                 desc: "Export PRDs, technical architecture, and database schemas as Markdown.",
-              },
-              {
-                icon: CpuIcon,
-                title: "Tavily Web Research",
-                desc: "Live search integration to benchmark packages and tech documentation.",
               },
               {
                 icon: LockIcon,
@@ -282,36 +275,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Section 5: Built With Tech Badges ──────────────────────────────── */}
-      <section id="stack" className="py-16 px-6 border-b border-[#1b2338] bg-[#070a14]">
-        <div className="mx-auto max-w-[1200px] text-center space-y-6">
-          <span className="font-mono text-xs uppercase tracking-wider text-[#5c6980]">
-            POWERED BY MODERN ENGINEERING INFRASTRUCTURE
-          </span>
-          <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-xs text-[#f3f6fc]">
-            {[
-              "Next.js 15",
-              "TypeScript",
-              "LangGraph.js",
-              "Prisma ORM",
-              "PostgreSQL",
-              "Clerk Auth",
-              "Tavily API",
-              "TailwindCSS",
-              "Vitest",
-            ].map((tech) => (
-              <span
-                key={tech}
-                className="rounded border border-[#1b2338] bg-[#0d1220] px-3.5 py-1.5 text-[11px] text-[#38b6ff] shadow-sm"
-              >
-                {tech}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 6: Final CTA Band ──────────────────────────────────────── */}
+      {/* ── Section 5: Final CTA Band ──────────────────────────────────────── */}
       <section className="py-20 px-6 bg-[#070a14] relative overflow-hidden">
         <div className="mx-auto max-w-[1200px] rounded-2xl border border-[#1060ee]/40 bg-[#0d1220] p-10 md:p-16 text-center space-y-6 relative shadow-2xl">
           <div className="h-32 w-64 absolute -top-16 left-1/2 -translate-x-1/2 bg-[#1060ee]/20 blur-[80px] pointer-events-none" />

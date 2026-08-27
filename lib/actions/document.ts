@@ -154,7 +154,6 @@ export async function generateDocumentAction(
       doc = await prisma.document.create({
         data: {
           projectId,
-          ownerId: userId,
           type: docType,
           title,
           content,
