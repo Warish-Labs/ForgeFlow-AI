@@ -2,12 +2,16 @@ import { notFound } from "next/navigation";
 import { getProjectByIdAction } from "@/lib/actions/project";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AnalyzeProjectButton } from "@/components/ai/AnalyzeProjectButton";
 import {
   ScrollTextIcon,
   SparklesIcon,
   LayersIcon,
   DatabaseIcon,
+  CheckCircle2Icon,
+  ShieldCheckIcon,
   CpuIcon,
+  ZapIcon,
 } from "lucide-react";
 
 interface ProjectTabParams {
@@ -57,6 +61,12 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
   const meta = tabMeta[tab] ?? tabMeta.requirements;
   const Icon = meta.icon;
 
+  // Extract structured requirements if available
+  const reqObj = (project.requirements as { functional?: string[]; nonFunctional?: string[] }) || {};
+  const functionalReqs = reqObj.functional || [];
+  const nonFunctionalReqs = reqObj.nonFunctional || [];
+  const stackList = Array.isArray(project.techStack) ? (project.techStack as string[]) : [];
+
   return (
     <div className="space-y-6">
       {/* Subpage Header Banner */}
@@ -72,9 +82,95 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="in_progress">Phase 2-3 Ready</Badge>
+          <AnalyzeProjectButton projectId={project.id} variant="accent" size="sm" />
         </div>
       </div>
+
+      {/* Requirements Tab View */}
+      {tab === "requirements" && (
+        <div className="space-y-6">
+          {/* Problem Statement Card */}
+          {project.problemStatement && (
+            <Card className="border-[var(--border-accent)] bg-[var(--navy-800)]/80">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)] flex items-center gap-2">
+                  <ZapIcon className="h-4 w-4" /> Core Problem Statement
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-[var(--text-primary)] leading-relaxed font-medium">
+                  {project.problemStatement}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recommended Tech Stack Grid */}
+          {stackList.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <CpuIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Recommended Technology Stack
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {stackList.map((tech) => (
+                    <span
+                      key={tech}
+                      className="rounded-lg border border-[var(--border-accent)] bg-[var(--navy-700)] px-3 py-1.5 text-xs font-mono text-[var(--accent-cyan)]"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Functional Requirements Grid */}
+          {functionalReqs.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                    <CheckCircle2Icon className="h-4 w-4 text-emerald-400" /> Functional Requirements
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2.5">
+                  {functionalReqs.map((req, idx) => (
+                    <div key={idx} className="flex items-start gap-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/40 p-3 text-xs text-[var(--text-secondary)]">
+                      <span className="font-mono text-[var(--accent-cyan)] font-bold shrink-0">F{idx + 1}.</span>
+                      <span className="leading-relaxed">{req}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                    <ShieldCheckIcon className="h-4 w-4 text-[var(--accent-cyan)]" /> Non-Functional Requirements
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2.5">
+                  {nonFunctionalReqs.map((req, idx) => (
+                    <div key={idx} className="flex items-start gap-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/40 p-3 text-xs text-[var(--text-secondary)]">
+                      <span className="font-mono text-[var(--accent-blue)] font-bold shrink-0">NFR{idx + 1}.</span>
+                      <span className="leading-relaxed">{req}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <EmptyTabPlaceholder
+              title="No Requirements Synthesized Yet"
+              desc="Click 'Analyze Vision' above to run the LangGraph AI requirement synthesis agent."
+            />
+          )}
+        </div>
+      )}
 
       {/* Features Tab */}
       {tab === "features" && (
@@ -128,16 +224,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
                       <span className="text-[var(--text-muted)]">{dec.alternative}</span>
                     </div>
                   )}
-                  {dec.affectedAreas.length > 0 && (
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <span className="font-semibold text-[var(--text-secondary)]">Affected Areas: </span>
-                      {dec.affectedAreas.map((area) => (
-                        <span key={area} className="rounded bg-[var(--navy-700)] px-1.5 py-0.5 text-[10px] text-[var(--accent-muted)]">
-                          {area}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))
@@ -166,11 +252,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
                         {item.title}
                       </h4>
                     </div>
-                    {item.dependsOn.length > 0 && (
-                      <p className="text-[11px] text-[var(--text-muted)]">
-                        Depends on: {item.dependsOn.join(", ")}
-                      </p>
-                    )}
                   </div>
                   <Badge variant={item.status === "completed" ? "completed" : "in_progress"}>
                     {item.status}
@@ -185,14 +266,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             />
           )}
         </div>
-      )}
-
-      {/* Requirements Tab */}
-      {tab === "requirements" && (
-        <EmptyTabPlaceholder
-          title="Requirements Synthesis Pending"
-          desc="In Phase 2, LangGraph AI requirement node will convert your software vision into a full structured specification."
-        />
       )}
     </div>
   );
