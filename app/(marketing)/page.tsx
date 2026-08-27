@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { Logo } from "@/components/shared/Logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import {
   ScrollTextIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  LayoutDashboardIcon,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -23,7 +25,6 @@ export const metadata: Metadata = {
   },
 };
 
-// The hub's orbiting nodes — mirrors the og-image motif exactly
 const HUB_NODES = [
   { label: "Requirements", icon: ScrollTextIcon, angle: -90, desc: "Understand goals, users & constraints" },
   { label: "Features", icon: SparklesIcon, angle: -30, desc: "Define capabilities & user stories" },
@@ -61,12 +62,10 @@ export default function LandingPage() {
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[var(--navy-950)]">
       {/* ── Ambient background ─────────────────────────────────────────── */}
       <div className="absolute inset-0 bg-grid opacity-60" aria-hidden="true" />
-      {/* Radial glow — center */}
       <div
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-2/3 h-[600px] w-[600px] rounded-full bg-[var(--accent-blue)] opacity-[0.06] blur-[120px] pointer-events-none"
         aria-hidden="true"
       />
-      {/* Cyan accent glow — right */}
       <div
         className="absolute right-0 top-1/4 h-[400px] w-[400px] rounded-full bg-[var(--accent-cyan)] opacity-[0.04] blur-[100px] pointer-events-none"
         aria-hidden="true"
@@ -76,13 +75,25 @@ export default function LandingPage() {
       <header className="relative z-10 border-b border-[var(--border-subtle)] bg-[var(--navy-950)]/70 backdrop-blur-sm">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 md:px-6">
           <Logo />
-          <nav className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button asChild variant="accent" size="sm">
-              <Link href="/sign-up">Get started</Link>
-            </Button>
+          <nav className="flex items-center gap-3">
+            <SignedOut>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+              <Button asChild variant="accent" size="sm">
+                <Link href="/sign-up">Get started</Link>
+              </Button>
+            </SignedOut>
+
+            <SignedIn>
+              <Button asChild variant="accent" size="sm" className="inline-flex items-center gap-1.5">
+                <Link href="/dashboard">
+                  <LayoutDashboardIcon className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
+              </Button>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
           </nav>
         </div>
       </header>
@@ -92,7 +103,6 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
           {/* Left — headline and CTA */}
           <div className="flex flex-col gap-6">
-            {/* Pill badge */}
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--border-accent)] bg-[var(--accent-glow)] px-3 py-1">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent-cyan)]" />
               <span className="text-xs font-medium text-[var(--accent-cyan)]">
@@ -100,7 +110,6 @@ export default function LandingPage() {
               </span>
             </div>
 
-            {/* Headline */}
             <div className="flex flex-col gap-2">
               <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-5xl lg:text-6xl">
                 <span className="text-[var(--text-primary)]">Why </span>
@@ -122,24 +131,33 @@ export default function LandingPage() {
 
             {/* CTAs */}
             <div className="flex flex-wrap gap-3 pt-2">
-              <Button asChild variant="accent" size="lg" id="hero-get-started">
-                <Link href="/sign-up">
-                  Start building
-                  <ArrowRightIcon className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" id="hero-sign-in">
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
+              <SignedOut>
+                <Button asChild variant="accent" size="lg" id="hero-get-started">
+                  <Link href="/sign-up">
+                    Start building
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" id="hero-sign-in">
+                  <Link href="/sign-in">Sign in</Link>
+                </Button>
+              </SignedOut>
+
+              <SignedIn>
+                <Button asChild variant="accent" size="lg">
+                  <Link href="/dashboard" className="inline-flex items-center gap-2">
+                    Go to Workspace Dashboard
+                    <ArrowRightIcon className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </SignedIn>
             </div>
 
-            {/* Trust signals */}
             <p className="text-xs text-[var(--text-muted)]">
               Free · No credit card · Runs on free-tier infrastructure
             </p>
           </div>
 
-          {/* Right — hub diagram (mirrors og-image center motif) */}
           <div className="relative flex items-center justify-center" aria-hidden="true">
             <HubDiagram />
           </div>
@@ -195,18 +213,22 @@ export default function LandingPage() {
             One sentence in. Complete architecture, requirements, and roadmap
             out. Under 5 minutes.
           </p>
-          <Button
-            asChild
-            variant="accent"
-            size="xl"
-            className="mt-6"
-            id="bottom-get-started"
-          >
-            <Link href="/sign-up">
-              Get started free
-              <ArrowRightIcon className="h-4 w-4" />
-            </Link>
-          </Button>
+          <SignedOut>
+            <Button asChild variant="accent" size="xl" className="mt-6" id="bottom-get-started">
+              <Link href="/sign-up">
+                Get started free
+                <ArrowRightIcon className="h-4 w-4" />
+              </Link>
+            </Button>
+          </SignedOut>
+          <SignedIn>
+            <Button asChild variant="accent" size="xl" className="mt-6">
+              <Link href="/dashboard">
+                Open Workspace Dashboard
+                <ArrowRightIcon className="h-4 w-4" />
+              </Link>
+            </Button>
+          </SignedIn>
         </div>
       </section>
 
@@ -234,7 +256,6 @@ export default function LandingPage() {
   );
 }
 
-// ── Hub diagram component (pure SVG + CSS, no canvas) ─────────────────────
 function HubDiagram() {
   const radius = 130;
   const cx = 200;
@@ -242,7 +263,6 @@ function HubDiagram() {
 
   return (
     <div className="relative w-full max-w-[400px] aspect-square">
-      {/* Outer glow */}
       <div className="absolute inset-0 rounded-full bg-[var(--accent-blue)] opacity-5 blur-3xl" />
 
       <svg
@@ -250,10 +270,9 @@ function HubDiagram() {
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="relative z-10 w-full h-full"
-        aria-label="ForgeFlow AI hub diagram showing Requirements, Features, Architecture, API Design, Documentation, and Roadmap orbiting a central Project State core"
+        aria-label="ForgeFlow AI hub diagram"
         role="img"
       >
-        {/* Outer orbit ring */}
         <circle
           cx={cx}
           cy={cy}
@@ -262,7 +281,6 @@ function HubDiagram() {
           strokeWidth="1"
           strokeDasharray="4 4"
         />
-        {/* Inner ring */}
         <circle
           cx={cx}
           cy={cy}
@@ -271,7 +289,6 @@ function HubDiagram() {
           strokeWidth="1"
         />
 
-        {/* Connector lines */}
         {HUB_NODES.map((node) => {
           const rad = (node.angle * Math.PI) / 180;
           const nx = cx + radius * Math.cos(rad);
@@ -290,16 +307,13 @@ function HubDiagram() {
           );
         })}
 
-        {/* Orbit node dots */}
         {HUB_NODES.map((node) => {
           const rad = (node.angle * Math.PI) / 180;
           const nx = cx + radius * Math.cos(rad);
           const ny = cy + radius * Math.sin(rad);
           return (
             <g key={node.label}>
-              {/* Glow ring */}
               <circle cx={nx} cy={ny} r="14" fill="rgba(26, 111, 255, 0.08)" />
-              {/* Node dot */}
               <circle
                 cx={nx}
                 cy={ny}
@@ -313,7 +327,6 @@ function HubDiagram() {
           );
         })}
 
-        {/* Center hub — "Project State" */}
         <circle
           cx={cx}
           cy={cy}
@@ -329,7 +342,6 @@ function HubDiagram() {
           strokeWidth="1.5"
           fill="none"
         />
-        {/* Center text */}
         <text
           x={cx}
           y={cy - 6}
@@ -380,10 +392,8 @@ function HubDiagram() {
         </defs>
       </svg>
 
-      {/* Node labels positioned around the SVG */}
       {HUB_NODES.map((node) => {
         const rad = (node.angle * Math.PI) / 180;
-        // Push labels further out than the SVG nodes
         const labelR = radius + 68;
         const lx = 50 + ((labelR * Math.cos(rad)) / 2);
         const ly = 50 + ((labelR * Math.sin(rad)) / 2);

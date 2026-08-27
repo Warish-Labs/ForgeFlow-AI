@@ -194,7 +194,9 @@ Problem Statement: ${project.problemStatement || "Not analyzed yet"}
 Target Stack: ${JSON.stringify(project.techStack || [])}
 Features Count: ${project.features.length}
 
-Answer the user's architectural or technical implementation question clearly and concisely in github-flavored markdown.`;
+Guidance Rules:
+1. Answer the user's architectural or technical implementation question clearly and concisely in github-flavored markdown.
+2. If any key project detail (such as authentication method, database schema, third-party APIs, or rate limiting) is missing or ambiguous, proactively ask the user 1-2 targeted clarifying questions to help refine their blueprint.`;
 
       const conversationHistory = session.messages.slice(-6).map((m) => {
         if (m.role === "user") return new HumanMessage(m.content);

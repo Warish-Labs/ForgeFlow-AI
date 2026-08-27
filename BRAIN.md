@@ -2,36 +2,31 @@
 
 ## Snapshot
 
-ForgeFlow AI is a Next.js 16.2.9 app that turns a one-line software idea into a structured, reasoned, implementation-ready blueprint using LangGraph.js agent orchestration, Clerk auth, and Supabase/Postgres. **Current phase: Phase 3 complete.** Architecture Decision Record (ADR) synthesis, system topology modeling, Zod validation guards, live ADR DecisionCards UI, and state transition to `ROADMAP_READY` are fully operational.
+ForgeFlow AI is a Next.js 16.2.9 app that turns a one-line software idea into a structured, reasoned, implementation-ready blueprint using LangGraph.js agent orchestration, Clerk auth, and Supabase/Postgres. **Current status: All Core Phases (0 - 4) Complete.** Implementation Roadmap & Milestone synthesis, dependency ordering, exportable Markdown Technical Blueprint compiler (`.md`), and single-tenant security isolation are fully operational.
 
 ## Where things actually live
 
 - **Route structure**: `app/(marketing)/` = landing page; `app/(auth)/sign-{in,up}/` = Clerk auth pages; `app/(app)/` = authenticated workspace (dashboard, projects)
-- **AI Architecture Core**: `lib/validations/architecture.ts` (Zod ADR schemas), `lib/ai/nodes/architectureNode.ts` (LangGraph architecture synthesis node), `lib/ai/graph.ts` (state graph).
-- **Architecture Actions & API**: `lib/actions/architecture.ts` (`generateArchitectureAction`), `/api/projects/[id]/architecture`.
-- **Architecture UI Components**: `components/architecture/DecisionCard.tsx` (ADR trade-offs card), `components/architecture/GenerateArchitectureButton.tsx` (step status button).
-- **Workspace Shell**: `app/(app)/projects/[id]/layout.tsx` (single-tenant guard), `page.tsx` (Overview), `[tab]/page.tsx` (Requirements, Features, Architecture, Roadmap).
-- **Unit Tests**: `tests/unit/ownership.test.ts`, `tests/unit/ai-parser.test.ts`, `tests/unit/architecture-parser.test.ts`.
+- **AI Core**: `lib/ai/provider.ts` (Groq/Gemini LLM abstraction), `lib/ai/graph.ts` (LangGraph.js state graph), `lib/validations/` (`ai.ts`, `architecture.ts`, `roadmap.ts`).
+- **AI Nodes**: `lib/ai/nodes/` (`architectureNode.ts`, `roadmapNode.ts`).
+- **Actions & API**: `lib/actions/` (`project.ts`, `ai.ts`, `architecture.ts`, `roadmap.ts`), `/api/projects/[id]/` (`analyze`, `architecture`, `roadmap`, `chat`, `export`).
+- **UI Components**: `components/ui/` (design primitives), `components/projects/` (ProjectCard, CreateModal), `components/ai/` (AnalyzeButton, ChatDrawer), `components/architecture/` (DecisionCard), `components/roadmap/` (RoadmapTimeline, ExportBlueprintButton).
+- **Unit Tests**: `tests/unit/` (`ownership.test.ts`, `ai-parser.test.ts`, `architecture-parser.test.ts`, `roadmap-parser.test.ts`).
 
 ## Decisions made & why
 
-- **ADR Structure**: Every architectural decision contains decision title, technical trade-off reasoning, rejected alternatives considered, and affected system component tags.
-- **Zero-Unvalidated-LLM-Output Policy**: All architecture JSON outputs are validated through `systemArchitectureSynthesisSchema.parse()` before updating Prisma `Decision` records or `Project.architecture` JSON.
-- **Single-tenant 404 Guard**: Filter all architecture queries and Server Actions by `ownerId === auth().userId`.
+- **Exportable Markdown Blueprint**: `exportBlueprintMarkdownAction` compiles complete software specification including Vision, Problem Statement, Requirements, Features, ADRs, and Delivery Roadmap into a clean `.md` document for developer download.
+- **Dependency Ordering in Roadmap**: Milestone tasks encode `dependsOn` arrays ensuring schema setup and auth precede feature releases.
+- **Zero-Unvalidated-LLM-Output Guard**: Zod validation schemas wrap all AI synthesis nodes.
 
 ## Known gotchas
 
 - **Prisma env vars**: Running `npx prisma generate` requires dummy or real `DATABASE_URL` and `DIRECT_URL` in env if running in isolated bash environment.
 
-## Current phase & next steps
+## Current phase status
 
-**Phase 0: COMPLETE** ✓
-**Phase 1: COMPLETE** ✓
-**Phase 2: COMPLETE** ✓
-**Phase 3: COMPLETE** ✓
-
-**Phase 4 next steps** (Roadmap & Milestone Generator):
-1. Create Roadmap Generator Node in LangGraph.
-2. Build sequential milestone items mapped by dependency order (`dependsOn`).
-3. Build interactive Roadmap Gantt / Milestone timeline view (`/projects/[id]/roadmap`).
-4. Generate exportable Markdown blueprint documentation.
+**Phase 0: COMPLETE** ✓ (Project Scaffolding & Brand System)
+**Phase 1: COMPLETE** ✓ (Project CRUD, Workspace Shell & Ownership Guard)
+**Phase 2: COMPLETE** ✓ (AI Core, Requirement Synthesis & Copilot Chat)
+**Phase 3: COMPLETE** ✓ (System Architecture & ADR Synthesis)
+**Phase 4: COMPLETE** ✓ (Implementation Roadmap & Markdown Blueprint Export)
