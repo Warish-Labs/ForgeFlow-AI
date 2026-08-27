@@ -3,18 +3,21 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { exportBlueprintMarkdownAction } from "@/lib/actions/roadmap";
-import { DownloadIcon, Loader2Icon, FileTextIcon } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
+import { DownloadIcon, Loader2Icon } from "lucide-react";
 
 interface ExportBlueprintButtonProps {
   projectId: string;
   variant?: "outline" | "secondary" | "accent" | "default";
   size?: "default" | "sm" | "lg";
+  showTooltip?: boolean;
 }
 
 export function ExportBlueprintButton({
   projectId,
   variant = "outline",
   size = "sm",
+  showTooltip = true,
 }: ExportBlueprintButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
 
@@ -41,20 +44,29 @@ export function ExportBlueprintButton({
   }
 
   return (
-    <Button
-      variant={variant}
-      size={size}
-      onClick={handleExport}
-      disabled={isExporting}
-      className="inline-flex items-center gap-2 font-medium transition-colors"
-      title="Download complete technical blueprint document (.md)"
-    >
-      {isExporting ? (
-        <Loader2Icon className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
-      ) : (
-        <DownloadIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
+    <div className="inline-flex items-center gap-1.5">
+      <Button
+        variant={variant}
+        size={size}
+        onClick={handleExport}
+        disabled={isExporting}
+        className="inline-flex items-center gap-2 font-medium transition-colors"
+        title="Download complete technical blueprint document (.md)"
+      >
+        {isExporting ? (
+          <Loader2Icon className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
+        ) : (
+          <DownloadIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
+        )}
+        <span>{isExporting ? "Exporting..." : "Export Blueprint (.md)"}</span>
+      </Button>
+      {showTooltip && (
+        <HelpTooltip
+          title="Export Blueprint Action"
+          text="WHAT: Compiles requirements, tech stack, architecture ADRs, and roadmap into a single Markdown file. WHEN: Whenever you want to share, present, or archive your project documentation."
+          side="bottom"
+        />
       )}
-      <span>{isExporting ? "Exporting..." : "Export Blueprint (.md)"}</span>
-    </Button>
+    </div>
   );
 }

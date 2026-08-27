@@ -12,8 +12,46 @@ export type ActionResult<T> =
   | { success: false; error: { code: string; message: string } };
 
 /**
-  * Run AI Requirement Synthesis on a project
-  */
+ * Checks if a user query is an off-topic general coding request unrelated to project planning/architecture
+ */
+function isOffTopicQuery(query: string): boolean {
+  const q = query.toLowerCase().trim();
+
+  // Pattern detection for generic code requests unrelated to project architecture
+  const offTopicPatterns = [
+    /\bwrite a python calculator\b/i,
+    /\bbuild me a react game\b/i,
+    /\bgenerate a java dsa\b/i,
+    /\bwrite a generic python\b/i,
+    /\bwrite an? email\b/i,
+    /\bcalculator program\b/i,
+    /\btic tac toe\b/i,
+    /\bsnake game\b/i,
+    /\bsolve my homework\b/i,
+  ];
+
+  if (offTopicPatterns.some((pattern) => pattern.test(q))) {
+    return true;
+  }
+
+  // General coding generation requests lacking any software architecture context
+  const genericCodePrefixes = [
+    "write a python script to ",
+    "write a python program that ",
+    "create a simple calculator",
+    "build me a snake game",
+    "write a C++ program",
+  ];
+
+  return genericCodePrefixes.some((prefix) => q.startsWith(prefix));
+}
+
+const OFF_TOPIC_REFUSAL_MESSAGE =
+  "I am ForgeFlow's project architecture assistant. I can help with this project's requirements, features, architecture, technology decisions, roadmap, database design, and documentation, but I cannot act as a general coding assistant.";
+
+/**
+ * Run AI Requirement Synthesis on a project
+ */
 export async function analyzeProjectAction(projectId: string): Promise<ActionResult<{ success: boolean }>> {
   const { userId } = await auth();
   if (!userId) {
@@ -26,7 +64,6 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
   const startTime = Date.now();
 
   try {
-    // 1. Fetch project with strict ownership check
     const project = await prisma.project.findFirst({
       where: { id: projectId, ownerId: userId },
     });
@@ -38,7 +75,6 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
       };
     }
 
-    // 2. Invoke LangGraph synthesis graph
     const graph = createSynthesisGraph();
     const stateResult = await graph.invoke({
       projectId: project.id,
@@ -54,9 +90,7 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
       };
     }
 
-    // 3. Update project in Prisma DB
     await prisma.$transaction(async (tx) => {
-      // Update project core metadata
       await tx.project.update({
         where: { id: projectId },
         data: {
@@ -70,12 +104,10 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
         },
       });
 
-      // Clear previous auto-generated features for fresh analysis
       await tx.feature.deleteMany({
         where: { projectId },
       });
 
-      // Bulk create new extracted features
       await tx.feature.createMany({
         data: synthesis.extractedFeatures.map((feat) => ({
           projectId,
@@ -86,7 +118,6 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
         })),
       });
 
-      // Log AI Usage
       const durationMs = Date.now() - startTime;
       await tx.aiUsageLog.create({
         data: {
@@ -108,7 +139,6 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
   } catch (error: any) {
     console.error("Error in analyzeProjectAction:", error);
 
-    // Log failure
     try {
       await prisma.aiUsageLog.create({
         data: {
@@ -123,14 +153,14 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
 
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to run AI analysis. Please try again." },
+      error: { code: "INTERNAL_ERROR", message: "Failed to run AI analysis. Please check your AI API key or try again." },
     };
   }
 }
 
 /**
-  * Interactive AI Chat message handling
-  */
+ * Interactive AI Chat message handling with strict domain topic restriction guard and rich context
+ */
 export async function sendChatMessageAction(
   projectId: string,
   userMessageContent: string
@@ -149,6 +179,8 @@ export async function sendChatMessageAction(
       include: {
         features: true,
         decisions: true,
+        roadmapItems: { orderBy: { order: "asc" } },
+        documents: true,
       },
     });
 
@@ -182,37 +214,92 @@ export async function sendChatMessageAction(
       },
     });
 
-    // Prepare LLM response context
+    // ── Topic Restriction Guard ─────────────────────────────────────────
+    if (isOffTopicQuery(userMessageContent)) {
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: session.id,
+          role: "assistant",
+          content: OFF_TOPIC_REFUSAL_MESSAGE,
+        },
+      });
+
+      return {
+        success: true,
+        data: {
+          userMessageId: userMessage.id,
+          assistantContent: OFF_TOPIC_REFUSAL_MESSAGE,
+        },
+      };
+    }
+
+    // Prepare LLM response with comprehensive project context
     const llm = getLlmClient();
     let assistantReply = "";
 
     if (llm) {
+      const requirementsText = project.requirements
+        ? JSON.stringify(project.requirements)
+        : "No requirements extracted yet.";
+
+      const featuresText = project.features.length > 0
+        ? project.features.map((f) => `- [${f.phase}] ${f.title}: ${f.description || "N/A"}`).join("\n")
+        : "No features generated yet.";
+
+      const decisionsText = project.decisions.length > 0
+        ? project.decisions.map((d) => `- ${d.decision} (Reasoning: ${d.reasoning})`).join("\n")
+        : "No ADRs generated yet.";
+
+      const roadmapText = project.roadmapItems.length > 0
+        ? project.roadmapItems.map((r) => `- [${r.phase}] ${r.title} (Status: ${r.status})`).join("\n")
+        : "No roadmap generated yet.";
+
+      const assumptionsText = project.assumptions ? JSON.stringify(project.assumptions) : "None specified";
+      const openQuestionsText = project.openQuestions ? JSON.stringify(project.openQuestions) : "None specified";
+
       const systemPrompt = `You are ForgeFlow AI, an expert software architecture copilot.
-You are assisting the owner of the project "${project.name}".
-Project Vision: ${project.ideaText}
-Problem Statement: ${project.problemStatement || "Not analyzed yet"}
-Target Stack: ${JSON.stringify(project.techStack || [])}
-Features Count: ${project.features.length}
+You are assisting the owner of project "${project.name}".
 
-Guidance Rules:
-1. Answer the user's architectural or technical implementation question clearly and concisely in github-flavored markdown.
-2. If any key project detail (such as authentication method, database schema, third-party APIs, or rate limiting) is missing or ambiguous, proactively ask the user 1-2 targeted clarifying questions to help refine their blueprint.`;
+=== ACTIVE PROJECT CONTEXT ===
+- Project ID: ${project.id}
+- Vision Idea: ${project.ideaText}
+- Problem Statement: ${project.problemStatement || "Not analyzed yet"}
+- Target Stack: ${JSON.stringify(project.techStack || [])}
+- Requirements: ${requirementsText}
+- Features:
+${featuresText}
+- Architecture & ADRs:
+${decisionsText}
+- Implementation Roadmap:
+${roadmapText}
+- Project Assumptions: ${assumptionsText}
+- Open Questions: ${openQuestionsText}
 
-      const conversationHistory = session.messages.slice(-6).map((m) => {
+=== GUIDANCE RULES ===
+1. Answer the user's architectural, technical, or project planning question clearly using the provided project context in github-flavored markdown.
+2. If the user asks about technology choices (e.g. why PostgreSQL or Redis was chosen), refer to the ADR decision log.
+3. If any key requirement or architectural constraint is missing or underspecified, proactively ask 1-2 targeted clarifying questions.
+4. Keep replies focused, professional, and directly grounded in the project state.`;
+
+      const conversationHistory = session.messages.slice(-8).map((m) => {
         if (m.role === "user") return new HumanMessage(m.content);
         return new AIMessage(m.content);
       });
 
-      const response = await llm.invoke([
-        new SystemMessage(systemPrompt),
-        ...conversationHistory,
-        new HumanMessage(userMessageContent),
-      ]);
+      try {
+        const response = await llm.invoke([
+          new SystemMessage(systemPrompt),
+          ...conversationHistory,
+          new HumanMessage(userMessageContent),
+        ]);
 
-      assistantReply = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+        assistantReply = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+      } catch (llmError: any) {
+        console.error("LLM Provider error in sendChatMessageAction:", llmError);
+        assistantReply = `**ForgeFlow AI Architecture Assistant (Offline Mode)**\n\nRegarding your question about **"${userMessageContent}"** for **${project.name}**:\n\n- **Project Vision**: ${project.ideaText.slice(0, 100)}...\n- **Target Stack**: ${JSON.stringify(project.techStack || [])}\n- **Architecture Rationale**: Architectural decisions prioritize single-tenant data isolation, relational data consistency, and strict schema validation.`;
+      }
     } else {
-      // Mock fallback chat response
-      assistantReply = `**ForgeFlow AI Architecture Assistant**\n\nRegarding your question about **"${userMessageContent}"** for project **${project.name}**:\n\n1. **Architecture Strategy**: Based on your vision (${project.ideaText.slice(0, 80)}...), we recommend leveraging clean modular boundaries.\n2. **Security**: Enforce strict single-tenant user ownership validation on every Server Action and API endpoint.\n3. **State Management**: Keep your primary project blueprints stored centrally in PostgreSQL with Zod schema guards before DB insertion.`;
+      assistantReply = `**ForgeFlow AI Architecture Assistant**\n\nRegarding your question about **"${userMessageContent}"** for project **${project.name}**:\n\n1. **Architecture Strategy**: Based on your vision, we recommend leveraging clean modular boundaries.\n2. **Security**: Enforce strict single-tenant user ownership validation (\`ownerId === auth().userId\`).\n3. **State Persistence**: All project blueprints are centrally stored in PostgreSQL with Zod schema guards before DB insertion.`;
     }
 
     // Save assistant message
@@ -235,7 +322,7 @@ Guidance Rules:
     console.error("Error in sendChatMessageAction:", error);
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to process chat message" },
+      error: { code: "INTERNAL_ERROR", message: "Failed to process chat message. Please try again." },
     };
   }
 }

@@ -1,13 +1,13 @@
 import { notFound } from "next/navigation";
 import { getProjectByIdAction } from "@/lib/actions/project";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { AnalyzeProjectButton } from "@/components/ai/AnalyzeProjectButton";
 import { GenerateArchitectureButton } from "@/components/architecture/GenerateArchitectureButton";
 import { DecisionCard } from "@/components/architecture/DecisionCard";
 import { GenerateRoadmapButton } from "@/components/roadmap/GenerateRoadmapButton";
 import { ExportBlueprintButton } from "@/components/roadmap/ExportBlueprintButton";
 import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import {
   ScrollTextIcon,
   SparklesIcon,
@@ -29,27 +29,41 @@ const validTabs = ["requirements", "features", "architecture", "roadmap"];
 
 const tabMeta: Record<
   string,
-  { title: string; desc: string; icon: React.ComponentType<{ className?: string }> }
+  {
+    title: string;
+    desc: string;
+    icon: React.ComponentType<{ className?: string }>;
+    tooltipTitle: string;
+    tooltipText: string;
+  }
 > = {
   requirements: {
     title: "Project Requirements & Scope",
     desc: "Structured functional, technical, and non-functional requirements extracted from software vision.",
     icon: ScrollTextIcon,
+    tooltipTitle: "Requirements & Scope",
+    tooltipText: "WHAT: Functional goals (what system must do) and Non-Functional constraints (speed, security, reliability). WHEN TO USE: Verify specifications before architecture design.",
   },
   features: {
     title: "Feature Backlog & User Stories",
     desc: "Prioritized feature definitions mapped by complexity, priority, and implementation status.",
     icon: SparklesIcon,
+    tooltipTitle: "Feature Backlog",
+    tooltipText: "WHAT: Feature list categorized into MVP (Phase 1), Phase 2 (Growth), and Phase 3 (Scale). WHEN TO USE: Plan sprint deliverables and user scope.",
   },
   architecture: {
     title: "System Architecture & Decision Log (ADR)",
     desc: "Component topology diagrams, entity data models, and immutable technical decision rationale.",
     icon: LayersIcon,
+    tooltipTitle: "System Architecture & ADRs",
+    tooltipText: "WHAT: Component boundaries, entity relationships, and formal ADR records explaining technical trade-offs. WHEN TO USE: Guide engineering and technology selection.",
   },
   roadmap: {
     title: "Implementation Roadmap & Delivery Milestones",
     desc: "Sequential delivery phases (MVP, Phase 2, Phase 3), dependency tree links, and blueprint export.",
     icon: DatabaseIcon,
+    tooltipTitle: "Implementation Roadmap",
+    tooltipText: "WHAT: Ordered milestone release schedule with prerequisite task dependency tracking. WHEN TO USE: Track build execution order.",
   },
 };
 
@@ -91,21 +105,24 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             <Icon className="h-5 w-5 text-[var(--accent-cyan)]" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">{meta.title}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">{meta.title}</h2>
+              <HelpTooltip title={meta.tooltipTitle} text={meta.tooltipText} />
+            </div>
             <p className="text-xs text-[var(--text-muted)] mt-1">{meta.desc}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           {tab === "architecture" ? (
-            <GenerateArchitectureButton projectId={project.id} variant="accent" size="sm" />
+            <GenerateArchitectureButton projectId={project.id} variant="accent" size="sm" showTooltip={true} />
           ) : tab === "roadmap" ? (
             <>
-              <GenerateRoadmapButton projectId={project.id} variant="accent" size="sm" />
-              <ExportBlueprintButton projectId={project.id} variant="outline" size="sm" />
+              <GenerateRoadmapButton projectId={project.id} variant="accent" size="sm" showTooltip={true} />
+              <ExportBlueprintButton projectId={project.id} variant="outline" size="sm" showTooltip={true} />
             </>
           ) : (
-            <AnalyzeProjectButton projectId={project.id} variant="accent" size="sm" />
+            <AnalyzeProjectButton projectId={project.id} variant="accent" size="sm" showTooltip={true} />
           )}
         </div>
       </div>
@@ -129,10 +146,14 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
         <div className="space-y-6">
           {archObj.overview && (
             <Card className="bg-[var(--navy-800)]/80 border-[var(--border-accent)]">
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
                 <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)] flex items-center gap-2">
                   <ServerIcon className="h-4 w-4" /> System Topology Overview
                 </CardTitle>
+                <HelpTooltip
+                  title="System Topology"
+                  text="Overview of system tier arrangement (Frontend UI, API Gateway, Database Layer, LLM Providers)."
+                />
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[var(--text-primary)] leading-relaxed font-medium">
@@ -144,9 +165,15 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
 
           {archComponents.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                <ServerIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Core System Components
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <ServerIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Core System Components
+                </h3>
+                <HelpTooltip
+                  title="Core System Components"
+                  text="Modular services and architectural layers that compose the complete application stack."
+                />
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {archComponents.map((comp, idx) => (
                   <Card key={idx} className="bg-[var(--navy-800)]/40 border-[var(--border-subtle)]">
@@ -174,9 +201,15 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
 
           {archModels.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                <DatabaseZapIcon className="h-4 w-4 text-[var(--accent-cyan)]" /> Entity Data Models
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <DatabaseZapIcon className="h-4 w-4 text-[var(--accent-cyan)]" /> Entity Data Models
+                </h3>
+                <HelpTooltip
+                  title="Entity Data Models"
+                  text="Database table entities, fields, and data types designed for relational integrity and single-tenant isolation."
+                />
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {archModels.map((model, idx) => (
                   <Card key={idx} className="bg-[var(--navy-800)]/40 border-[var(--border-subtle)]">
@@ -205,9 +238,15 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
           )}
 
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-              <LayersIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Architecture Decision Records (ADRs)
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <LayersIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Architecture Decision Records (ADRs)
+              </h3>
+              <HelpTooltip
+                title="Architecture Decision Records (ADRs)"
+                text="Immutable records documenting critical architectural decisions, reasoning, trade-offs, and affected system areas."
+              />
+            </div>
             {project.decisions.length > 0 ? (
               <div className="space-y-4">
                 {project.decisions.map((dec) => (
@@ -235,10 +274,14 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
         <div className="space-y-6">
           {project.problemStatement && (
             <Card className="border-[var(--border-accent)] bg-[var(--navy-800)]/80">
-              <CardHeader className="pb-2">
+              <CardHeader className="pb-2 flex flex-row items-center justify-between">
                 <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)] flex items-center gap-2">
                   <ZapIcon className="h-4 w-4" /> Core Problem Statement
                 </CardTitle>
+                <HelpTooltip
+                  title="Problem Statement"
+                  text="Extracted statement defining the central problem your application addresses for target users."
+                />
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[var(--text-primary)] leading-relaxed font-medium">
@@ -250,10 +293,14 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
 
           {stackList.length > 0 && (
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                   <CpuIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Recommended Technology Stack
                 </CardTitle>
+                <HelpTooltip
+                  title="Recommended Stack"
+                  text="Technologies recommended based on project requirements and vision statement."
+                />
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
@@ -273,10 +320,14 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
           {functionalReqs.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                     <CheckCircle2Icon className="h-4 w-4 text-emerald-400" /> Functional Requirements
                   </CardTitle>
+                  <HelpTooltip
+                    title="Functional Requirements"
+                    text="Explicit actions, capabilities, and features the software MUST perform for users."
+                  />
                 </CardHeader>
                 <CardContent className="space-y-2.5">
                   {functionalReqs.map((req, idx) => (
@@ -289,10 +340,14 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
               </Card>
 
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                     <ShieldCheckIcon className="h-4 w-4 text-[var(--accent-cyan)]" /> Non-Functional Requirements
                   </CardTitle>
+                  <HelpTooltip
+                    title="Non-Functional Requirements"
+                    text="Quality attributes including security, scalability, response speed, and data privacy."
+                  />
                 </CardHeader>
                 <CardContent className="space-y-2.5">
                   {nonFunctionalReqs.map((req, idx) => (

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard, ProjectCardData } from "@/components/projects/ProjectCard";
 import { CreateProjectModal } from "@/components/projects/CreateProjectModal";
-import { PlusIcon } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
+import { PlusIcon, SparklesIcon } from "lucide-react";
 
 export function DashboardClient({ initialProjects }: { initialProjects: ProjectCardData[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -12,11 +13,17 @@ export function DashboardClient({ initialProjects }: { initialProjects: ProjectC
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
       {/* Page Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
-            Project Blueprints
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+              Project Blueprints
+            </h1>
+            <HelpTooltip
+              title="ForgeFlow Workspace"
+              text="Your project dashboard contains all software blueprints, requirement specs, topology decisions, ADR logs, and release roadmaps."
+            />
+          </div>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             Manage your AI-orchestrated software architectures
           </p>
@@ -28,8 +35,24 @@ export function DashboardClient({ initialProjects }: { initialProjects: ProjectC
           onClick={() => setIsModalOpen(true)}
         >
           <PlusIcon className="h-4 w-4" />
-          New Project
+          New Blueprint
         </Button>
+      </div>
+
+      {/* Guidance Banner */}
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--navy-800)]/40 p-4 text-xs">
+        <div className="flex items-center gap-2">
+          <SparklesIcon className="h-4 w-4 text-[var(--accent-cyan)] shrink-0" />
+          <span className="text-[var(--text-secondary)] font-medium">Project Blueprint Workflow:</span>
+          <span className="text-[var(--text-muted)]">
+            Idea → Requirements → Features → System Architecture → ADRs → Roadmap → Document Export
+          </span>
+        </div>
+        <HelpTooltip
+          title="Blueprint Statuses"
+          text="Draft: New idea text. Analyzed: Requirements extracted. Architecture Ready: System topology & ADRs modeled. Roadmap Ready: Implementation order ready."
+          side="left"
+        />
       </div>
 
       {/* Projects Grid or Empty State */}

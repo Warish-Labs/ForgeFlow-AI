@@ -4,18 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { generateArchitectureAction } from "@/lib/actions/architecture";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import { LayersIcon, Loader2Icon } from "lucide-react";
 
 interface GenerateArchitectureButtonProps {
   projectId: string;
   variant?: "accent" | "default" | "secondary" | "outline";
   size?: "default" | "sm" | "lg";
+  showTooltip?: boolean;
 }
 
 export function GenerateArchitectureButton({
   projectId,
   variant = "accent",
   size = "sm",
+  showTooltip = true,
 }: GenerateArchitectureButtonProps) {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -33,7 +36,7 @@ export function GenerateArchitectureButton({
     clearTimeout(t1);
     clearTimeout(t2);
     setIsGenerating(false);
-    setStepText("Generate ADRs");
+    setStepText("Generate Architecture");
 
     if (!result.success) {
       alert(`Architecture Synthesis Failed: ${result.error.message}`);
@@ -44,24 +47,34 @@ export function GenerateArchitectureButton({
   }
 
   return (
-    <Button
-      variant={variant}
-      size={size}
-      onClick={handleGenerate}
-      disabled={isGenerating}
-      className="inline-flex items-center gap-2 font-medium transition-all"
-    >
-      {isGenerating ? (
-        <>
-          <Loader2Icon className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
-          <span>{stepText}</span>
-        </>
-      ) : (
-        <>
-          <LayersIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
-          <span>Generate Architecture</span>
-        </>
+    <div className="inline-flex items-center gap-1.5">
+      <Button
+        variant={variant}
+        size={size}
+        onClick={handleGenerate}
+        disabled={isGenerating}
+        className="inline-flex items-center gap-2 font-medium transition-all"
+        title="Synthesize system topology & Architecture Decision Records (ADRs)"
+      >
+        {isGenerating ? (
+          <>
+            <Loader2Icon className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
+            <span>{stepText}</span>
+          </>
+        ) : (
+          <>
+            <LayersIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
+            <span>Generate Architecture</span>
+          </>
+        )}
+      </Button>
+      {showTooltip && (
+        <HelpTooltip
+          title="Generate Architecture Action"
+          text="WHAT: Synthesizes system component topology, database schemas, and Architecture Decision Records (ADRs). WHEN: After analyzing requirements. OUTPUT: Formatted ADR cards with rationale, trade-offs, and affected areas."
+          side="bottom"
+        />
       )}
-    </Button>
+    </div>
   );
 }

@@ -15,7 +15,6 @@ datasource db {
 
 model Project {
   id                String        @id @default(cuid())
-  // Clerk userId — no FK to a local User table (see BRAIN.md for reasoning)
   ownerId           String
   name              String
   ideaText          String
@@ -26,6 +25,8 @@ model Project {
   techStack         Json?
   architecture      Json?
   architectureText  String?
+  assumptions       Json?
+  openQuestions     Json?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -126,11 +127,17 @@ model Document {
   id        String   @id @default(cuid())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type      String   // "PRD" | "ARCHITECTURE" | "ROADMAP" | "README" | "DATABASE"
+  ownerId   String
+  type      String   // "PRD" | "REQUIREMENTS" | "FEATURES" | "STACK" | "ARCHITECTURE" | "ADRS" | "DATABASE" | "SECURITY" | "ROADMAP" | "BLUEPRINT"
+  title     String
   content   String
+  version   Int      @default(1)
+  status    String   @default("Generated") // "Draft" | "Generated" | "Edited"
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([projectId])
+  @@index([ownerId])
 }
 
 // ─── Observability ───────────────────────────────────────────────────────────
@@ -148,21 +155,3 @@ model AiUsageLog {
   @@index([projectId])
   @@index([projectId, createdAt])
 }
-
-// ─── Phase 4 additions — DO NOT BUILD BEFORE PHASE 4 ────────────────────────
-// model KnowledgeDocument {
-//   id       String           @id @default(cuid())
-//   title    String
-//   category String
-//   content  String
-//   chunks   KnowledgeChunk[]
-// }
-//
-// model KnowledgeChunk {
-//   id         String           @id @default(cuid())
-//   documentId String
-//   document   KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-//   content    String
-//   embedding  Unsupported("vector(768)")?
-//   @@index([documentId])
-// }

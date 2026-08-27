@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getProjectByIdAction } from "@/lib/actions/project";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BlueprintProgressCard } from "@/components/overview/BlueprintProgressCard";
+import { NextStepCard } from "@/components/overview/NextStepCard";
+import { TechStackManager } from "@/components/stack/TechStackManager";
+import { AssumptionsAndQuestions } from "@/components/overview/AssumptionsAndQuestions";
 import {
   SparklesIcon,
   LayersIcon,
@@ -29,8 +33,46 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
   const roadmapCount = project._count?.roadmapItems ?? 0;
   const documentCount = project._count?.documents ?? 0;
 
+  const stackList: string[] = Array.isArray(project.techStack)
+    ? (project.techStack as string[])
+    : [];
+
+  const reqObj = (project.requirements as { functional?: string[]; nonFunctional?: string[] }) || {};
+  const hasRequirements = Boolean(reqObj.functional && reqObj.functional.length > 0);
+  const hasArchitecture = decisionCount > 0;
+  const hasRoadmap = roadmapCount > 0;
+  const hasDocuments = documentCount > 0;
+
+  const assumptionsList: string[] = Array.isArray(project.assumptions)
+    ? (project.assumptions as string[])
+    : [];
+
+  const openQuestionsList = Array.isArray(project.openQuestions)
+    ? (project.openQuestions as Array<{ question: string; answer: string }>)
+    : [];
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Dynamic Next Step Workflow Guidance */}
+      <NextStepCard
+        projectId={project.id}
+        hasRequirements={hasRequirements}
+        hasArchitecture={hasArchitecture}
+        hasRoadmap={hasRoadmap}
+        hasDocuments={hasDocuments}
+      />
+
+      {/* Blueprint Progress Checklist */}
+      <BlueprintProgressCard
+        hasVision={Boolean(project.ideaText)}
+        hasRequirements={hasRequirements}
+        hasFeatures={featureCount > 0}
+        hasStack={stackList.length > 0}
+        hasArchitecture={hasArchitecture}
+        hasRoadmap={hasRoadmap}
+        documentsCount={documentCount}
+      />
+
       {/* Stat Grid */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card className="bg-[var(--navy-800)]/60">
@@ -85,6 +127,7 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
+          {/* Software Vision Card */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-semibold text-[var(--text-primary)]">
@@ -108,41 +151,15 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
             </CardContent>
           </Card>
 
-          {/* Key Decisions */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base font-semibold text-[var(--text-primary)]">
-                Architectural Decisions
-              </CardTitle>
-              <Link
-                href={`/projects/${project.id}/architecture`}
-                className="text-xs text-[var(--accent-blue)] hover:text-[var(--accent-cyan)] font-medium inline-flex items-center gap-1"
-              >
-                View all <ArrowRightIcon className="h-3 w-3" />
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {project.decisions.length > 0 ? (
-                project.decisions.slice(0, 3).map((dec) => (
-                  <div
-                    key={dec.id}
-                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/40 p-3.5"
-                  >
-                    <span className="text-xs font-semibold text-[var(--text-primary)] block mb-1">
-                      {dec.decision}
-                    </span>
-                    <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                      {dec.reasoning}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-xs text-[var(--text-muted)] italic py-2">
-                  No architectural decisions recorded yet. Phase 3 AI synthesis will generate initial decisions.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          {/* Technology Stack Manager */}
+          <TechStackManager projectId={project.id} initialStack={stackList} />
+
+          {/* Open Questions & Assumptions */}
+          <AssumptionsAndQuestions
+            projectId={project.id}
+            initialAssumptions={assumptionsList}
+            initialQuestions={openQuestionsList}
+          />
         </div>
 
         {/* Right Sidebar */}
@@ -184,6 +201,42 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
               ) : (
                 <p className="text-xs text-[var(--text-muted)] italic py-2">
                   No features added yet. Use the Features tab or run AI Requirements Analysis.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Key Decisions */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-semibold text-[var(--text-primary)]">
+                Architectural Decisions
+              </CardTitle>
+              <Link
+                href={`/projects/${project.id}/architecture`}
+                className="text-xs text-[var(--accent-blue)] hover:text-[var(--accent-cyan)] font-medium inline-flex items-center gap-1"
+              >
+                View all <ArrowRightIcon className="h-3 w-3" />
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {project.decisions.length > 0 ? (
+                project.decisions.slice(0, 3).map((dec) => (
+                  <div
+                    key={dec.id}
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/40 p-3.5"
+                  >
+                    <span className="text-xs font-semibold text-[var(--text-primary)] block mb-1">
+                      {dec.decision}
+                    </span>
+                    <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                      {dec.reasoning}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-[var(--text-muted)] italic py-2">
+                  No architectural decisions recorded yet. Run AI Architecture synthesis to generate decisions.
                 </p>
               )}
             </CardContent>

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProjectAction } from "@/lib/actions/project";
 import { Button } from "@/components/ui/button";
-import { SparklesIcon, InfoIcon } from "lucide-react";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
+import { SparklesIcon, InfoIcon, AlertTriangleIcon } from "lucide-react";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -43,6 +44,8 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
     setTechStackInput(demo.techStack);
     setErrorMsg(null);
   }
+
+  const isVagueIdea = ideaText.trim().length > 0 && ideaText.trim().length < 25;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -136,11 +139,25 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           </div>
         )}
 
+        {/* Vague Idea Scope Warning Guard */}
+        {isVagueIdea && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-800/50 bg-amber-950/40 p-3 text-xs text-amber-300">
+            <AlertTriangleIcon className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+            <div>
+              <strong>Idea Scope Notice:</strong> Your vision statement is very broad. For high-quality AI requirements synthesis, consider adding details about target users and core feature goals.
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label htmlFor="project-name" className="text-xs font-medium text-[var(--text-secondary)]">
+              <label htmlFor="project-name" className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
                 Project Name <span className="text-[var(--accent-cyan)]">*</span>
+                <HelpTooltip
+                  title="Project Name"
+                  text="A short identifier for your software blueprint project (e.g. EcoTrack Fleet Analytics)."
+                />
               </label>
               <span className="text-[10px] font-mono text-[var(--text-muted)]">
                 {name.length}/50 chars (min 3)
@@ -160,8 +177,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
 
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label htmlFor="project-idea" className="text-xs font-medium text-[var(--text-secondary)]">
+              <label htmlFor="project-idea" className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
                 Software Idea & Vision <span className="text-[var(--accent-cyan)]">*</span>
+                <HelpTooltip
+                  title="Software Vision"
+                  text="Describe what you want to build, who will use it, the core problem it solves, and key goals. ForgeFlow extracts requirements from this."
+                />
               </label>
               <span className="text-[10px] font-mono text-[var(--text-muted)]">
                 {ideaText.length}/1000 chars (min 10)
@@ -180,8 +201,12 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
           </div>
 
           <div>
-            <label htmlFor="project-stack" className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
+            <label htmlFor="project-stack" className="mb-1 text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
               Target Stack (Optional, comma-separated)
+              <HelpTooltip
+                title="Target Technology Stack"
+                text="Add technologies you plan to use (e.g. Next.js, PostgreSQL). ForgeFlow incorporates them into the system architecture and decision log."
+              />
             </label>
             <input
               id="project-stack"

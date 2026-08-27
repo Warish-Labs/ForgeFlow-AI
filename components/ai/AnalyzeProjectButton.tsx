@@ -4,18 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { analyzeProjectAction } from "@/lib/actions/ai";
+import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import { SparklesIcon, Loader2Icon } from "lucide-react";
 
 interface AnalyzeProjectButtonProps {
   projectId: string;
   variant?: "accent" | "default" | "secondary" | "outline";
   size?: "default" | "sm" | "lg";
+  showTooltip?: boolean;
 }
 
 export function AnalyzeProjectButton({
   projectId,
   variant = "accent",
   size = "sm",
+  showTooltip = true,
 }: AnalyzeProjectButtonProps) {
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -44,24 +47,34 @@ export function AnalyzeProjectButton({
   }
 
   return (
-    <Button
-      variant={variant}
-      size={size}
-      onClick={handleAnalyze}
-      disabled={isAnalyzing}
-      className="inline-flex items-center gap-2 font-medium transition-all"
-    >
-      {isAnalyzing ? (
-        <>
-          <Loader2Icon className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
-          <span>{stepText}</span>
-        </>
-      ) : (
-        <>
-          <SparklesIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
-          <span>Analyze Vision</span>
-        </>
+    <div className="inline-flex items-center gap-1.5">
+      <Button
+        variant={variant}
+        size={size}
+        onClick={handleAnalyze}
+        disabled={isAnalyzing}
+        className="inline-flex items-center gap-2 font-medium transition-all"
+        title="Analyze software vision idea using AI synthesis"
+      >
+        {isAnalyzing ? (
+          <>
+            <Loader2Icon className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
+            <span>{stepText}</span>
+          </>
+        ) : (
+          <>
+            <SparklesIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
+            <span>Analyze Vision</span>
+          </>
+        )}
+      </Button>
+      {showTooltip && (
+        <HelpTooltip
+          title="Analyze Vision Action"
+          text="WHAT: AI parses your software idea vision statement. WHEN: Right after creating a project or updating your vision. OUTPUT: Problem statement, functional requirements, non-functional requirements, and initial feature list."
+          side="bottom"
+        />
       )}
-    </Button>
+    </div>
   );
 }
