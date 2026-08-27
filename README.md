@@ -1,183 +1,147 @@
-# ForgeFlow AI
+<p align="center">
+  <a href="https://forgeflow.warishlabs.in">
+    <img src="public/Logo/forgeflow-logo-gradient.svg" width="120" height="120" alt="ForgeFlow AI Logo" />
+  </a>
+</p>
 
-> Turn a software idea into a structured, reasoned, implementation-ready blueprint — and keep reasoning about it as the idea evolves.
+<h1 align="center">ForgeFlow AI</h1>
 
-**Stack:** Next.js 16 · TypeScript · Clerk · Prisma · Supabase Postgres · LangGraph.js · Groq/Gemini · Tailwind v4 · Vercel
+<p align="center">
+  <strong>The Autonomous Software Architecture & Specification Engine</strong>
+</p>
 
-[![Phase](https://img.shields.io/badge/Status-Complete-green)](#current-status)
-[![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+<p align="center">
+  <em>Turn software vision into structured, reasoned, implementation-ready architecture blueprints — with persistent state and human-in-the-loop AI proposal execution.</em>
+</p>
 
----
-
-## What is ForgeFlow AI?
-
-Generic AI chat gives you disposable text — a wall of suggestions with no persistent state, no traceable decisions, and no understanding of how a later change ripples through your architecture.
-
-ForgeFlow is different: **persistent project state + technical reasoning + iterative AI planning**. Every requirement, technology choice, and architecture decision is stored, reasoned about, and attributable. Ask "why Postgres?" and get an answer from the decision log, not a re-hallucination.
-
-The differentiator: **the AI never regenerates from scratch — it reads state → proposes a change → validates it via Zod → requires your approval → then updates state.** Human-in-the-loop is a core product constraint, not an afterthought.
-
----
-
-## Current Status
-
-| Phase | Status | Notes |
-|---|---|---|
-| 0 — Scaffolding | ✅ Complete | Clerk auth, Prisma schema, Tailwind v4 design tokens, landing page |
-| 1 — Project CRUD & Workspace | ✅ Complete | Single-tenant 404 security guard, seed data, tabbed workspace |
-| 2 — AI Core & Requirement Synthesis | ✅ Complete | LangGraph.js graph, Groq Llama-3.3 / Gemini fallback, Zod guards, AI Copilot Chat |
-| 3 — System Architecture & ADRs | ✅ Complete | Architecture synthesis, DecisionCards UI, trade-off reasoning |
-| 4 — Roadmap & Blueprint Export | ✅ Complete | Sequential milestone timeline, dependency ordering, `.md` export |
+<p align="center">
+  <a href="#key-features"><img src="https://img.shields.io/badge/Next.js-16.0-blue?style=for-the-badge&logo=nextdotjs" alt="Next.js 16" /></a>
+  <a href="#key-features"><img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript" /></a>
+  <a href="#key-features"><img src="https://img.shields.io/badge/Clerk-Auth-6C47FF?style=for-the-badge&logo=clerk" alt="Clerk Auth" /></a>
+  <a href="#key-features"><img src="https://img.shields.io/badge/LangGraph-JS-FF6B6B?style=for-the-badge" alt="LangGraph" /></a>
+  <a href="#key-features"><img src="https://img.shields.io/badge/Prisma-6.0-2D3748?style=for-the-badge&logo=prisma" alt="Prisma ORM" /></a>
+  <a href="#key-features"><img src="https://img.shields.io/badge/License-MIT-2fe6b0?style=for-the-badge" alt="MIT License" /></a>
+</p>
 
 ---
 
-## Setup (15-minute bar)
+## 🌟 Why ForgeFlow AI?
 
-### Prerequisites
+Generic AI chat gives you disposable text — a wall of unvalidated suggestions with no persistent state, no traceable decision history, and no understanding of how later changes ripple through your system.
 
-- Node.js ≥ 20.9 (use `nvm use` — `.nvmrc` is committed)
-- Docker (for local Postgres) **or** Supabase CLI
-- Accounts (all free, no credit card): [Clerk](https://dashboard.clerk.com), [Groq](https://console.groq.com), [Upstash](https://upstash.com) (Phase 2+)
+**ForgeFlow AI changes that paradigm**:
+- 🧠 **Persistent Architecture State**: Every requirement, technology badge, data entity, and Architecture Decision Record (ADR) is stored in a single-tenant database.
+- 🛠️ **ForgeFlow Agent Proposal Engine**: The AI never rewrites project state blindly — it analyzes state, constructs a structured **Proposal Card**, and waits for explicit user **Accept / Reject** confirmation.
+- ✏️ **Full Interactive Workspace**: Edit project vision, system requirements, feature backlogs, tech stacks, ADRs, and delivery roadmaps inline with real-time UI feedback.
+- 📄 **Production Markdown Blueprint Export**: Export complete PRD, TDD, entity schemas, and milestone roadmaps as production-ready Markdown documents.
 
-### 1. Clone and install
+---
 
+## 🚀 Key Features
+
+| Feature | Description |
+|---|---|
+| 🎯 **Software Vision Synthesis** | Extract structured functional & non-functional requirements from raw prompt ideas using LangGraph.js nodes. |
+| 🛡️ **ForgeFlow Agent Copilot** | Context-grounded AI agent trained on your project's exact state with Tavily live search integration. |
+| 🏗️ **System Architecture & ADRs** | Synthesize component topology, relational data entities, and immutable Architecture Decision Records. |
+| 📅 **Sequential Delivery Roadmap** | Auto-generate Phase 1 (MVP), Phase 2 (Growth), and Phase 3 (Scale) milestones with prerequisite dependency graphs. |
+| ✏️ **Interactive Inline Editing** | Modify requirements, tech stacks, features, and milestones directly on screen with instant state validation. |
+| 📑 **Document Generation Engine** | Synthesize PRDs, Technical Architecture Specs, and Roadmaps with live Markdown preview and copying. |
+
+---
+
+## 🏛️ System Architecture
+
+```
+                  ┌──────────────────────────────────────────────┐
+                  │              User Browser (UI)               │
+                  └──────────────────────┬───────────────────────┘
+                                         │
+                         Next.js 16 App Router (Turbopack)
+                                         │
+        ┌────────────────────────────────┼────────────────────────────────┐
+        ▼                                ▼                                ▼
+┌───────────────┐               ┌─────────────────┐             ┌──────────────────┐
+│  Clerk Auth   │               │ LangGraph Agent │             │  Prisma / Postgres│
+│ Single-Tenant │               │ (Groq / Gemini) │             │ Persistent State │
+└───────────────┘               └────────┬────────┘             └──────────────────┘
+                                         │
+                                ┌────────▼────────┐
+                                │ Tavily Web Search│
+                                └─────────────────┘
+```
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
+- **Language**: [TypeScript 5](https://www.typescriptlang.org/)
+- **Authentication**: [Clerk Auth](https://clerk.com/)
+- **Database & ORM**: PostgreSQL ([Supabase](https://supabase.com/)) & [Prisma ORM](https://www.prisma.io/)
+- **Agent Orchestration**: [LangGraph.js](https://js.langchain.com/docs/langgraph)
+- **LLM Providers**: Groq (`llama-3.3-70b-versatile`) with Google Gemini fallback
+- **Search Integration**: Tavily API
+- **Styling**: Tailwind CSS & Lucide Icons
+
+---
+
+## 💻 Quick Start & Local Setup
+
+### 1. Prerequisites
+- **Node.js**: $\ge 20.9$ (`nvm use`)
+- **PostgreSQL**: Docker or Supabase local instance
+
+### 2. Clone Repository & Install Dependencies
 ```bash
 git clone https://github.com/warishlabs/ForgeFlow-AI.git
 cd ForgeFlow-AI
 npm install
 ```
 
-### 2. Start local Postgres
-
-```bash
-# Option A — Docker Compose (simplest)
-docker compose up -d
-
-# Option B — Supabase CLI
-supabase start  # prints a local connection string
-```
-
-### 3. Configure environment variables
-
+### 3. Configure Environment Variables
+Copy `.env.example` to `.env.local` and populate required keys:
 ```bash
 cp .env.example .env.local
-# Edit .env.local and fill in:
-#   DATABASE_URL + DIRECT_URL  (local Postgres or Supabase local)
-#   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY + CLERK_SECRET_KEY  (dashboard.clerk.com)
-# Phase 2+ keys (GROQ_API_KEY, GOOGLE_GENERATIVE_AI_API_KEY, Upstash) can wait
 ```
 
-### 4. Run migrations and seed
+Required keys:
+```env
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/forgeflow"
+DIRECT_URL="postgresql://postgres:postgres@localhost:5432/forgeflow"
+GROQ_API_KEY=gsk_...
+TAVILY_API_KEY=tvly-...
+```
 
+### 4. Database Setup & Migrations
 ```bash
-npm run db:migrate      # creates schema in local Postgres
-# npm run db:seed       # (Phase 1+) adds example projects
+npx prisma db push
 ```
 
-### 5. Start dev server
-
+### 5. Run Development Server
 ```bash
 npm run dev
-# → http://localhost:3000
-```
-
-### Verify
-
-- Landing page loads at `/`
-- Sign up → Clerk creates a user → redirect to `/dashboard`
-- Dashboard shows empty state
-- `/dashboard` without auth redirects to `/sign-in`
-
----
-
-## Project Structure
-
-```
-ForgeFlow-AI/
-├── app/
-│   ├── (marketing)/page.tsx     # Public landing page (SEO'd, full brand)
-│   ├── (auth)/sign-in|sign-up/  # Clerk prebuilt auth UI
-│   ├── (app)/                   # Authenticated workspace (noindex)
-│   │   ├── layout.tsx           # App shell with header + UserButton
-│   │   └── dashboard/page.tsx   # Project list (Phase 1 fills this in)
-│   ├── layout.tsx               # Root — ClerkProvider, metadata, fonts
-│   ├── globals.css              # Design tokens from og-image brand
-│   ├── icon.tsx                 # Programmatic favicon (FF monogram)
-│   └── sitemap.ts               # Public-routes-only sitemap
-├── components/
-│   ├── ui/                      # Button, Card, Badge, Skeleton
-│   └── shared/Logo.tsx          # FF monogram logo component
-├── lib/
-│   ├── db/prisma.ts             # Prisma singleton client
-│   ├── utils.ts                 # cn() utility
-│   └── ai/                      # Phase 2: provider.ts, providers/
-├── prisma/
-│   └── schema.prisma            # MVP schema (no User model — Clerk)
-├── tests/
-│   ├── setup.ts
-│   ├── unit/                    # Vitest unit tests
-│   └── eval/                    # AI evaluation test cases (Phase 2+)
-├── middleware.ts                # clerkMiddleware + noindex headers
-├── BRAIN.md                     # Build memory — read this first in any new session
-├── Docs/                        # Source documentation
-│   ├── 01_PRD.md
-│   ├── 02_TDD.md
-│   ├── 03_IMPLEMENTATION_ROADMAP.md
-│   ├── 04_DESIGN_IDEA.md
-│   └── og-image.png             # Brand asset (also in public/)
-└── docker-compose.yml           # Local Postgres for development
+# Open http://localhost:3000
 ```
 
 ---
 
-## Scripts
+## 📋 Available Commands
 
 | Script | Description |
 |---|---|
-| `npm run dev` | Start dev server (Turbopack) |
-| `npm run build` | Production build |
-| `npm run typecheck` | TypeScript check (zero errors required) |
-| `npm run lint` | ESLint |
-| `npm run test` | Vitest unit tests |
-| `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:studio` | Open Prisma Studio |
-| `npm run db:seed` | Seed example projects (Phase 1+) |
+| `npm run dev` | Start development server (Turbopack) |
+| `npm run build` | Build production application bundle |
+| `npm run typecheck` | Run TypeScript strict compiler check (`tsc --noEmit`) |
+| `npm run test` | Run Vitest unit & evaluation suite |
+| `npm run lint` | Run ESLint syntax & code checks |
 
 ---
 
-## Known Deviations from TDD
+## 📄 License & Attribution
 
-| What the TDD specifies | What this build uses | Reason |
-|---|---|---|
-| Auth.js (NextAuth v5) | **Clerk** | Standing preference; 50K MAU free tier; eliminates session/hashing code |
-| Neon Postgres | **Supabase** (hosted), Docker postgres:16 (local) | Matches existing Warish stack; same pgvector support in Phase 4 |
-| `src/app/...` structure | **Root-level `app/`** | Matched actual create-next-app scaffold output |
-| `docs/` (lowercase) | **`Docs/`** (capital D) | As created; kept to avoid git confusion |
-| Groq `llama-3.3-70b-versatile` | Verify at build time | Model IDs shift on ~3–6 month cadence |
-| Gemini `gemini-2.5-flash` | Verify at build time | Same reason — treat as a variable |
+Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for details.
 
----
-
-## Architecture (Phase 0 view)
-
-```
-Browser
-  └── Next.js 16 (App Router, Turbopack)
-        ├── (marketing)/* — public, SEO'd, server-rendered
-        ├── (auth)/*      — Clerk hosted auth UI
-        └── (app)/*       — authenticated workspace, noindex
-              ├── clerkMiddleware (middleware.ts)
-              ├── Route Handlers (app/api/*)  [Phase 1+]
-              ├── Service Layer (lib/services) [Phase 1+]
-              └── AI/Agent Layer (LangGraph.js) [Phase 2+]
-                    └── LLMProvider (Groq primary / Gemini fallback)
-  └── Prisma → Postgres (Supabase / local Docker)
-```
-
----
-
-## License
-
-MIT — see [LICENSE](./LICENSE)
-
-Built by [MD Warish Ansari](https://warishlabs.in) · [WarishLabs](https://warishlabs.in) — Engineering · AI · Impact
+Developed with ❤️ by **MD Warish Ansari** · [WarishLabs](https://warishlabs.in)
