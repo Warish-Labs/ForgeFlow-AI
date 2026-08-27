@@ -9,7 +9,7 @@ export const prisma =
   new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: process.env.DATABASE_URL || "postgresql://postgres:Warish%40786@localhost:5433/forgeflow",
       },
     },
     log:
