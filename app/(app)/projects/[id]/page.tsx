@@ -5,6 +5,7 @@ import { BlueprintProgressCard } from "@/components/overview/BlueprintProgressCa
 import { NextStepCard } from "@/components/overview/NextStepCard";
 import { TechStackManager } from "@/components/stack/TechStackManager";
 import { AssumptionsAndQuestions } from "@/components/overview/AssumptionsAndQuestions";
+import { EditableSoftwareVision } from "@/components/overview/EditableSoftwareVision";
 import {
   SparklesIcon,
   LayersIcon,
@@ -117,25 +118,12 @@ export default async function ProjectOverviewPage({ params }: ProjectOverviewPag
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          {/* Software Vision Card */}
-          <div className="rounded-xl border border-[#3b82f6]/20 bg-[#050814] p-5 space-y-3 shadow-xl">
-            <h3 className="text-sm font-semibold text-[#f8fafc]">
-              Software Vision & Functional Scope
-            </h3>
-            <p className="text-xs text-[#cbd5e1] leading-relaxed whitespace-pre-wrap">
-              {project.ideaText}
-            </p>
-            {project.problemStatement && (
-              <div className="mt-4 pt-3 border-t border-[#3b82f6]/20">
-                <h4 className="text-[10px] font-mono text-[#64748b] uppercase tracking-wider mb-1">
-                  Problem Statement
-                </h4>
-                <p className="text-xs text-[#cbd5e1] leading-relaxed">
-                  {project.problemStatement}
-                </p>
-              </div>
-            )}
-          </div>
+          {/* Software Vision Card (Editable) */}
+          <EditableSoftwareVision
+            projectId={project.id}
+            initialIdeaText={project.ideaText}
+            initialProblemStatement={project.problemStatement || ""}
+          />
 
           {/* Technology Stack Manager */}
           <TechStackManager projectId={project.id} initialStack={stackList} />

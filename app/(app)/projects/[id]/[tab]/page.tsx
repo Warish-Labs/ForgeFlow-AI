@@ -7,6 +7,10 @@ import { DecisionCard } from "@/components/architecture/DecisionCard";
 import { GenerateRoadmapButton } from "@/components/roadmap/GenerateRoadmapButton";
 import { ExportBlueprintButton } from "@/components/roadmap/ExportBlueprintButton";
 import { RoadmapTimeline } from "@/components/roadmap/RoadmapTimeline";
+import { EditableRequirementsList } from "@/components/requirements/EditableRequirementsList";
+import { EditableFeatureCard } from "@/components/features/EditableFeatureCard";
+import { EditableDecisionCard } from "@/components/architecture/EditableDecisionCard";
+import { EditableRoadmapCard } from "@/components/roadmap/EditableRoadmapCard";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import {
   ScrollTextIcon,
@@ -131,7 +135,29 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
       {tab === "roadmap" && (
         <div className="space-y-6">
           {project.roadmapItems.length > 0 ? (
-            <RoadmapTimeline items={project.roadmapItems} />
+            <div className="space-y-3">
+              <RoadmapTimeline items={project.roadmapItems} />
+              <div className="pt-4 border-t border-[#1b2338]">
+                <h4 className="text-xs font-mono font-bold uppercase text-[#38b6ff] mb-3">
+                  Interactive Milestone Management
+                </h4>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {project.roadmapItems.map((item) => (
+                    <EditableRoadmapCard
+                      key={item.id}
+                      projectId={project.id}
+                      item={{
+                        id: item.id,
+                        title: item.title,
+                        phase: item.phase,
+                        status: item.status,
+                        dependsOn: item.dependsOn,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           ) : (
             <EmptyTabPlaceholder
               title="No Delivery Roadmap Generated Yet"
@@ -250,12 +276,16 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             {project.decisions.length > 0 ? (
               <div className="space-y-4">
                 {project.decisions.map((dec) => (
-                  <DecisionCard
+                  <EditableDecisionCard
                     key={dec.id}
-                    decision={dec.decision}
-                    reasoning={dec.reasoning}
-                    alternative={dec.alternative}
-                    affectedAreas={dec.affectedAreas}
+                    projectId={project.id}
+                    decision={{
+                      id: dec.id,
+                      decision: dec.decision,
+                      reasoning: dec.reasoning,
+                      alternative: dec.alternative,
+                      affectedAreas: dec.affectedAreas,
+                    }}
                   />
                 ))}
               </div>
@@ -272,99 +302,11 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
       {/* Requirements Tab View */}
       {tab === "requirements" && (
         <div className="space-y-6">
-          {project.problemStatement && (
-            <Card className="border-[var(--border-accent)] bg-[var(--navy-800)]/80">
-              <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)] flex items-center gap-2">
-                  <ZapIcon className="h-4 w-4" /> Core Problem Statement
-                </CardTitle>
-                <HelpTooltip
-                  title="Problem Statement"
-                  text="Extracted statement defining the central problem your application addresses for target users."
-                />
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-[var(--text-primary)] leading-relaxed font-medium">
-                  {project.problemStatement}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {stackList.length > 0 && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                  <CpuIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Recommended Technology Stack
-                </CardTitle>
-                <HelpTooltip
-                  title="Recommended Stack"
-                  text="Technologies recommended based on project requirements and vision statement."
-                />
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {stackList.map((tech) => (
-                    <span
-                      key={tech}
-                      className="rounded-lg border border-[var(--border-accent)] bg-[var(--navy-700)] px-3 py-1.5 text-xs font-mono text-[var(--accent-cyan)]"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {functionalReqs.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                    <CheckCircle2Icon className="h-4 w-4 text-emerald-400" /> Functional Requirements
-                  </CardTitle>
-                  <HelpTooltip
-                    title="Functional Requirements"
-                    text="Explicit actions, capabilities, and features the software MUST perform for users."
-                  />
-                </CardHeader>
-                <CardContent className="space-y-2.5">
-                  {functionalReqs.map((req, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/40 p-3 text-xs text-[var(--text-secondary)]">
-                      <span className="font-mono text-[var(--accent-cyan)] font-bold shrink-0">F{idx + 1}.</span>
-                      <span className="leading-relaxed">{req}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                    <ShieldCheckIcon className="h-4 w-4 text-[var(--accent-cyan)]" /> Non-Functional Requirements
-                  </CardTitle>
-                  <HelpTooltip
-                    title="Non-Functional Requirements"
-                    text="Quality attributes including security, scalability, response speed, and data privacy."
-                  />
-                </CardHeader>
-                <CardContent className="space-y-2.5">
-                  {nonFunctionalReqs.map((req, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/40 p-3 text-xs text-[var(--text-secondary)]">
-                      <span className="font-mono text-[var(--accent-blue)] font-bold shrink-0">NFR{idx + 1}.</span>
-                      <span className="leading-relaxed">{req}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <EmptyTabPlaceholder
-              title="No Requirements Synthesized Yet"
-              desc="Click 'Analyze Vision' above to run the LangGraph AI requirement synthesis agent."
-            />
-          )}
+          <EditableRequirementsList
+            projectId={project.id}
+            initialFunctional={functionalReqs}
+            initialNonFunctional={nonFunctionalReqs}
+          />
         </div>
       )}
 
@@ -373,21 +315,17 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {project.features.length > 0 ? (
             project.features.map((feat) => (
-              <Card key={feat.id} className="bg-[var(--navy-800)]/40">
-                <CardHeader className="p-4 flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-[var(--text-primary)]">
-                    {feat.title}
-                  </CardTitle>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--navy-700)] text-[var(--accent-muted)]">
-                    {feat.phase}
-                  </span>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                    {feat.description ?? "No description provided."}
-                  </p>
-                </CardContent>
-              </Card>
+              <EditableFeatureCard
+                key={feat.id}
+                projectId={project.id}
+                feature={{
+                  id: feat.id,
+                  title: feat.title,
+                  description: feat.description,
+                  phase: feat.phase,
+                  status: feat.status,
+                }}
+              />
             ))
           ) : (
             <EmptyTabPlaceholder

@@ -31,6 +31,8 @@ export const updateProjectSchema = z.object({
   problemStatement: z.string().optional(),
   status: z.enum(["PLANNING", "ARCHITECTURE", "ROADMAP_READY", "EXPORTED"]).optional(),
   techStack: z.array(z.string()).optional(),
+  requirements: z.any().optional(),
+  architectureText: z.string().optional(),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
