@@ -23,6 +23,14 @@ const badgeVariants = cva(
           "border-purple-800/50 bg-purple-900/40 text-purple-400",
         exported:
           "border-emerald-800/50 bg-emerald-900/40 text-emerald-400",
+        draft:
+          "border-[var(--border-default)] bg-[var(--navy-700)] text-[var(--text-secondary)]",
+        in_progress:
+          "border-blue-800/50 bg-blue-900/40 text-blue-400",
+        completed:
+          "border-emerald-800/50 bg-emerald-900/40 text-emerald-400",
+        archived:
+          "border-[var(--border-subtle)] bg-[var(--navy-800)] text-[var(--text-muted)]",
       },
     },
     defaultVariants: {
