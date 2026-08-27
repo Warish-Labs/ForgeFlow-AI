@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { createSynthesisGraph } from "@/lib/ai/graph";
 import { getLlmClient } from "@/lib/ai/provider";
+import { searchTavily } from "@/lib/tools/tavily";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 
 export type ActionResult<T> =
@@ -231,6 +232,36 @@ export async function sendChatMessageAction(
           assistantContent: OFF_TOPIC_REFUSAL_MESSAGE,
         },
       };
+    }
+
+    // ── Tavily Live Search Enhancement ─────────────────────────────
+    let tavilyContext = "";
+    const lowerQuery = userMessageContent.toLowerCase();
+    const shouldSearchWeb =
+      lowerQuery.includes("latest") ||
+      lowerQuery.includes("search") ||
+      lowerQuery.includes("tavily") ||
+      lowerQuery.includes("vs") ||
+      lowerQuery.includes("compare") ||
+      lowerQuery.includes("docs") ||
+      lowerQuery.includes("library") ||
+      lowerQuery.includes("version") ||
+      lowerQuery.includes("framework") ||
+      lowerQuery.includes("benchmark");
+
+    if (shouldSearchWeb && process.env.TAVILY_API_KEY) {
+      try {
+        const tavilyRes = await searchTavily(`${project.name} ${userMessageContent}`);
+        if (tavilyRes.results && tavilyRes.results.length > 0) {
+          tavilyContext = `\n\n### Live Web Research Findings (via Tavily Search):\n` +
+            tavilyRes.results
+              .slice(0, 3)
+              .map((r) => `- **[${r.title}](${r.url})**: ${r.content}`)
+              .join("\n");
+        }
+      } catch (err) {
+        console.warn("Tavily search execution failed inside AI chat action:", err);
+      }
     }
 
     // Prepare LLM response with comprehensive project context

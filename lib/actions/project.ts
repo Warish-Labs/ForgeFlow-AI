@@ -88,6 +88,7 @@ export async function getUserProjectsAction() {
             features: true,
             decisions: true,
             roadmapItems: true,
+            documents: true,
           },
         },
       },

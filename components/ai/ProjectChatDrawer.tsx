@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FormattedMarkdown } from "@/components/ui/FormattedMarkdown";
 import { sendChatMessageAction } from "@/lib/actions/ai";
 import { BotIcon, SendIcon, XIcon, UserIcon, SparklesIcon } from "lucide-react";
 
@@ -28,7 +29,7 @@ export function ProjectChatDrawer({
     {
       id: "welcome",
       role: "assistant",
-      content: `Hello! I'm your ForgeFlow AI Architecture Copilot for **${projectName}**. Ask me anything about technology trade-offs, architecture patterns, or requirement details!`,
+      content: `Hello! I am your **ForgeFlow Architecture Copilot** for **${projectName}**.\n\nAsk me anything about technology trade-offs, architecture patterns, or requirement details! You can also ask me to **search Tavily** for live web research.`,
     },
   ]);
   const [input, setInput] = useState("");
@@ -61,7 +62,7 @@ export function ProjectChatDrawer({
         {
           id: `err-${Date.now()}`,
           role: "assistant",
-          content: `⚠️ Failed to get response: ${result.error.message}`,
+          content: `⚠️ **Failed to get response**: ${result.error.message}`,
         },
       ]);
       return;
@@ -79,28 +80,28 @@ export function ProjectChatDrawer({
 
   return (
     <div
-      className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-[var(--border-accent)] bg-[var(--navy-900)] shadow-2xl backdrop-blur-lg transition-all"
+      className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-[#c8ad86]/30 bg-[#000000] shadow-2xl backdrop-blur-xl transition-all"
       role="dialog"
       aria-modal="true"
       aria-label={`AI Chat for ${projectName}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-4 py-3.5 bg-[var(--navy-800)]/80">
+      <div className="flex items-center justify-between border-b border-[#fff7dd]/15 px-4 py-3.5 bg-[#0a0a0a]">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent-glow)] border border-[var(--border-accent)]">
-            <BotIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
+          <div className="flex h-8 w-8 items-center justify-center rounded border border-[#c8ad86]/40 bg-[#121212]">
+            <BotIcon className="h-4 w-4 text-[#c8ad86]" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+            <h3 className="text-sm font-semibold text-[#fff7dd]">
               Architecture Copilot
             </h3>
-            <p className="text-[11px] text-[var(--text-muted)] line-clamp-1">{projectName}</p>
+            <p className="text-[11px] text-[#66635f] line-clamp-1">{projectName}</p>
           </div>
         </div>
 
         <button
           onClick={onClose}
-          className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--navy-700)] hover:text-[var(--text-primary)]"
+          className="rounded p-1.5 text-[#66635f] hover:bg-[#121212] hover:text-[#fff7dd]"
           aria-label="Close chat drawer"
         >
           <XIcon className="h-4 w-4" />
@@ -119,49 +120,52 @@ export function ProjectChatDrawer({
             <div
               className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs ${
                 msg.role === "user"
-                  ? "border-blue-700 bg-blue-950 text-blue-300"
-                  : "border-[var(--border-accent)] bg-[var(--navy-800)] text-[var(--accent-cyan)]"
+                  ? "border-[#c8ad86]/40 bg-[#121212] text-[#c8ad86]"
+                  : "border-[#c8ad86]/50 bg-[#0a0a0a] text-[#fff7dd]"
               }`}
             >
-              {msg.role === "user" ? <UserIcon className="h-3.5 w-3.5" /> : <SparklesIcon className="h-3.5 w-3.5" />}
+              {msg.role === "user" ? <UserIcon className="h-3.5 w-3.5" /> : <SparklesIcon className="h-3.5 w-3.5 text-[#c8ad86]" />}
             </div>
 
             <div
-              className={`max-w-[82%] rounded-xl px-3.5 py-2.5 leading-relaxed ${
+              className={`max-w-[85%] rounded-lg px-3.5 py-2.5 leading-relaxed border ${
                 msg.role === "user"
-                  ? "bg-[var(--accent-blue)] text-white"
-                  : "border border-[var(--border-subtle)] bg-[var(--navy-800)]/70 text-[var(--text-secondary)]"
+                  ? "bg-[#121212] text-[#fff7dd] border-[#c8ad86]/30"
+                  : "bg-[#0a0a0a] text-[#fff7dd] border-[#fff7dd]/15"
               }`}
             >
-              <div className="whitespace-pre-wrap">{msg.content}</div>
+              {msg.role === "user" ? (
+                <div className="whitespace-pre-wrap">{msg.content}</div>
+              ) : (
+                <FormattedMarkdown content={msg.content} />
+              )}
             </div>
           </div>
         ))}
 
         {isSending && (
-          <div className="flex items-center gap-2 text-[11px] text-[var(--text-muted)] italic pl-9">
-            <SparklesIcon className="h-3.5 w-3.5 animate-spin text-[var(--accent-cyan)]" />
-            Copilot is thinking...
+          <div className="flex items-center gap-2 text-[11px] text-[#66635f] italic pl-9">
+            <SparklesIcon className="h-3.5 w-3.5 animate-spin text-[#c8ad86]" />
+            Copilot is analyzing project state & Tavily web findings...
           </div>
         )}
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSend} className="border-t border-[var(--border-subtle)] p-3 bg-[var(--navy-800)]/50">
+      <form onSubmit={handleSend} className="border-t border-[#fff7dd]/15 p-3 bg-[#0a0a0a]">
         <div className="flex items-center gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about tech stack, patterns, or architecture..."
-            className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--navy-800)] px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--accent-blue)] focus:outline-none"
+            placeholder="Ask architecture question or search Tavily..."
+            className="flex-1 rounded border border-[#fff7dd]/20 bg-[#000000] px-3 py-2 text-xs text-[#fff7dd] placeholder-[#66635f] focus:border-[#c8ad86] focus:outline-none"
           />
           <Button
             type="submit"
-            variant="accent"
             size="sm"
             disabled={!input.trim() || isSending}
-            className="px-3"
+            className="px-3 bg-[#c8ad86] text-[#000000] hover:bg-[#b09570] font-medium"
           >
             <SendIcon className="h-3.5 w-3.5" />
           </Button>
