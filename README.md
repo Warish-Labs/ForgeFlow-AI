@@ -4,7 +4,7 @@
 
 **Stack:** Next.js 16 · TypeScript · Clerk · Prisma · Supabase Postgres · LangGraph.js · Groq/Gemini · Tailwind v4 · Vercel
 
-[![Phase](https://img.shields.io/badge/Phase-1%20in%20progress-blue)](#current-status)
+[![Phase](https://img.shields.io/badge/Status-Complete-green)](#current-status)
 [![License](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 
 ---
@@ -15,7 +15,7 @@ Generic AI chat gives you disposable text — a wall of suggestions with no pers
 
 ForgeFlow is different: **persistent project state + technical reasoning + iterative AI planning**. Every requirement, technology choice, and architecture decision is stored, reasoned about, and attributable. Ask "why Postgres?" and get an answer from the decision log, not a re-hallucination.
 
-The differentiator: **the AI never regenerates from scratch — it reads state → proposes a change → validates it → requires your approval → then updates state.** Human-in-the-loop is a core product constraint, not an afterthought.
+The differentiator: **the AI never regenerates from scratch — it reads state → proposes a change → validates it via Zod → requires your approval → then updates state.** Human-in-the-loop is a core product constraint, not an afterthought.
 
 ---
 
@@ -23,14 +23,11 @@ The differentiator: **the AI never regenerates from scratch — it reads state �
 
 | Phase | Status | Notes |
 |---|---|---|
-| 0 — Scaffolding | ✅ Complete | Clerk auth, Prisma schema, design tokens, landing page |
-| 1 — Project CRUD | 🔄 In progress | — |
-| 2 — Requirement Intelligence (first AI) | ⬜ Pending | — |
-| 3 — Tech Stack + Architecture + Roadmap | ⬜ Pending | — |
-| 4 — RAG Knowledge Base | ⬜ Pending | — |
-| 5 — Persistent Chat + Tool Calling | ⬜ Pending | — |
-| 6 — Export System | ⬜ Pending | — |
-| 7 — Polish + Deployment | ⬜ Pending | — |
+| 0 — Scaffolding | ✅ Complete | Clerk auth, Prisma schema, Tailwind v4 design tokens, landing page |
+| 1 — Project CRUD & Workspace | ✅ Complete | Single-tenant 404 security guard, seed data, tabbed workspace |
+| 2 — AI Core & Requirement Synthesis | ✅ Complete | LangGraph.js graph, Groq Llama-3.3 / Gemini fallback, Zod guards, AI Copilot Chat |
+| 3 — System Architecture & ADRs | ✅ Complete | Architecture synthesis, DecisionCards UI, trade-off reasoning |
+| 4 — Roadmap & Blueprint Export | ✅ Complete | Sequential milestone timeline, dependency ordering, `.md` export |
 
 ---
 
