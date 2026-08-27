@@ -3,6 +3,8 @@ import { getProjectByIdAction } from "@/lib/actions/project";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AnalyzeProjectButton } from "@/components/ai/AnalyzeProjectButton";
+import { GenerateArchitectureButton } from "@/components/architecture/GenerateArchitectureButton";
+import { DecisionCard } from "@/components/architecture/DecisionCard";
 import {
   ScrollTextIcon,
   SparklesIcon,
@@ -12,6 +14,8 @@ import {
   ShieldCheckIcon,
   CpuIcon,
   ZapIcon,
+  ServerIcon,
+  DatabaseZapIcon,
 } from "lucide-react";
 
 interface ProjectTabParams {
@@ -35,8 +39,8 @@ const tabMeta: Record<
     icon: SparklesIcon,
   },
   architecture: {
-    title: "System Architecture & Decision Log",
-    desc: "Component diagrams, API contracts, data models, and immutable technical decision rationale.",
+    title: "System Architecture & Decision Log (ADR)",
+    desc: "Component topology diagrams, entity data models, and immutable technical decision rationale.",
     icon: LayersIcon,
   },
   roadmap: {
@@ -61,11 +65,19 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
   const meta = tabMeta[tab] ?? tabMeta.requirements;
   const Icon = meta.icon;
 
-  // Extract structured requirements if available
   const reqObj = (project.requirements as { functional?: string[]; nonFunctional?: string[] }) || {};
   const functionalReqs = reqObj.functional || [];
   const nonFunctionalReqs = reqObj.nonFunctional || [];
   const stackList = Array.isArray(project.techStack) ? (project.techStack as string[]) : [];
+
+  const archObj = (project.architecture as {
+    overview?: string;
+    components?: { name: string; type: string; description: string; tech: string }[];
+    dataModels?: { entity: string; description: string; fields: string[] }[];
+  }) || {};
+
+  const archComponents = archObj.components || [];
+  const archModels = archObj.dataModels || [];
 
   return (
     <div className="space-y-6">
@@ -82,14 +94,127 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <AnalyzeProjectButton projectId={project.id} variant="accent" size="sm" />
+          {tab === "architecture" ? (
+            <GenerateArchitectureButton projectId={project.id} variant="accent" size="sm" />
+          ) : (
+            <AnalyzeProjectButton projectId={project.id} variant="accent" size="sm" />
+          )}
         </div>
       </div>
+
+      {/* Architecture Tab View */}
+      {tab === "architecture" && (
+        <div className="space-y-6">
+          {/* Overview */}
+          {archObj.overview && (
+            <Card className="bg-[var(--navy-800)]/80 border-[var(--border-accent)]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-mono font-bold uppercase tracking-wider text-[var(--accent-cyan)] flex items-center gap-2">
+                  <ServerIcon className="h-4 w-4" /> System Topology Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-[var(--text-primary)] leading-relaxed font-medium">
+                  {archObj.overview}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* System Components Breakdown */}
+          {archComponents.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <ServerIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Core System Components
+              </h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {archComponents.map((comp, idx) => (
+                  <Card key={idx} className="bg-[var(--navy-800)]/40 border-[var(--border-subtle)]">
+                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                      <CardTitle className="text-xs font-bold text-[var(--text-primary)]">
+                        {comp.name}
+                      </CardTitle>
+                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[var(--navy-700)] text-[var(--accent-cyan)] border border-[var(--border-subtle)]">
+                        {comp.type}
+                      </span>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 space-y-2 text-xs">
+                      <p className="text-[var(--text-muted)] leading-relaxed text-[11px]">
+                        {comp.description}
+                      </p>
+                      <div className="pt-1 text-[10px] font-mono text-[var(--accent-muted)] border-t border-[var(--border-subtle)]">
+                        Tech: {comp.tech}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Entity Data Models */}
+          {archModels.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <DatabaseZapIcon className="h-4 w-4 text-[var(--accent-cyan)]" /> Entity Data Models
+              </h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {archModels.map((model, idx) => (
+                  <Card key={idx} className="bg-[var(--navy-800)]/40 border-[var(--border-subtle)]">
+                    <CardHeader className="p-4 pb-2">
+                      <CardTitle className="text-xs font-bold text-[var(--text-primary)]">
+                        {model.entity}
+                      </CardTitle>
+                      <p className="text-[11px] text-[var(--text-muted)]">{model.description}</p>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[var(--border-subtle)]">
+                        {model.fields.map((f) => (
+                          <span
+                            key={f}
+                            className="rounded bg-[var(--navy-700)] px-2 py-0.5 text-[10px] font-mono text-[var(--text-secondary)] border border-[var(--border-subtle)]"
+                          >
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Architecture Decision Records (ADRs) */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <LayersIcon className="h-4 w-4 text-[var(--accent-blue)]" /> Architecture Decision Records (ADRs)
+            </h3>
+            {project.decisions.length > 0 ? (
+              <div className="space-y-4">
+                {project.decisions.map((dec) => (
+                  <DecisionCard
+                    key={dec.id}
+                    decision={dec.decision}
+                    reasoning={dec.reasoning}
+                    alternative={dec.alternative}
+                    affectedAreas={dec.affectedAreas}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyTabPlaceholder
+                title="No Architecture Decision Records (ADRs) Generated"
+                desc="Click 'Generate Architecture' above to analyze technical trade-offs and build ADR records."
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Requirements Tab View */}
       {tab === "requirements" && (
         <div className="space-y-6">
-          {/* Problem Statement Card */}
           {project.problemStatement && (
             <Card className="border-[var(--border-accent)] bg-[var(--navy-800)]/80">
               <CardHeader className="pb-2">
@@ -105,7 +230,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             </Card>
           )}
 
-          {/* Recommended Tech Stack Grid */}
           {stackList.length > 0 && (
             <Card>
               <CardHeader>
@@ -128,7 +252,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
             </Card>
           )}
 
-          {/* Functional Requirements Grid */}
           {functionalReqs.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Card>
@@ -202,40 +325,6 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
         </div>
       )}
 
-      {/* Architecture Tab */}
-      {tab === "architecture" && (
-        <div className="space-y-4">
-          {project.decisions.length > 0 ? (
-            project.decisions.map((dec) => (
-              <Card key={dec.id} className="bg-[var(--navy-800)]/40">
-                <CardHeader className="p-4 flex flex-row items-center justify-between border-b border-[var(--border-subtle)]">
-                  <CardTitle className="text-sm font-semibold text-[var(--text-primary)]">
-                    {dec.decision}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 space-y-2 text-xs">
-                  <div>
-                    <span className="font-semibold text-[var(--text-secondary)]">Reasoning: </span>
-                    <span className="text-[var(--text-muted)]">{dec.reasoning}</span>
-                  </div>
-                  {dec.alternative && (
-                    <div>
-                      <span className="font-semibold text-[var(--text-secondary)]">Alternative considered: </span>
-                      <span className="text-[var(--text-muted)]">{dec.alternative}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <EmptyTabPlaceholder
-              title="No architecture decisions recorded"
-              desc="Phase 3 AI Tech Stack Synthesis will automatically generate architecture decision records (ADRs)."
-            />
-          )}
-        </div>
-      )}
-
       {/* Roadmap Tab */}
       {tab === "roadmap" && (
         <div className="space-y-4">
@@ -262,7 +351,7 @@ export default async function ProjectTabSubPage({ params }: ProjectTabParams) {
           ) : (
             <EmptyTabPlaceholder
               title="No roadmap items planned"
-              desc="Phase 3 AI Roadmap Generator will structure sequential delivery milestones."
+              desc="Phase 4 AI Roadmap Generator will structure sequential delivery milestones."
             />
           )}
         </div>

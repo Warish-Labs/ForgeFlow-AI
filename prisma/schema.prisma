@@ -24,7 +24,7 @@ model Project {
   // Zod-validated on write — never allow unvalidated structured output to touch the DB
   requirements      Json?
   techStack         Json?
-  // Generated ascii/text diagram + plain-language narrative
+  architecture      Json?
   architectureText  String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
