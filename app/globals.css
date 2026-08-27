@@ -1,74 +1,41 @@
 /* ─────────────────────────────────────────────────────────────────────────── *
- *  ForgeFlow AI — Electric Blue Design System                                 *
- *  Palette:                                                                   *
- *    Obsidian Canvas: #000000 / #050814                                       *
- *    Electric Blue Accent: #3b82f6 / #2563eb / #60a5fa                       *
- *    Cyan Glow: #00d4ff / #38bdf8                                             *
- *    Clean Text: #f8fafc / #e2e8f0                                            *
- *    Muted Surface: #64748b / #1e293b                                         *
+ *  ForgeFlow AI — Production Design System Tokens (Pass 2)                    *
  * ─────────────────────────────────────────────────────────────────────────── */
 
 @import "tailwindcss";
 
 :root {
-  /* Electric Blue Palette */
-  --color-obsidian-black: #000000;
-  --color-candlelight-cream: #f8fafc;
-  --color-champagne-gold: #3b82f6; /* Blue replacement token */
-  --color-ember-ash: #64748b;
+  /* Core Color Tokens */
+  --background: #070a14;
+  --card: #0d1220;
+  --card-raised: #131a2c;
+  --primary: #1060ee;
+  --primary-bright: #38b6ff;
+  --primary-deep: #0a2a9c;
+  --success: #2fe6b0; /* ONLY accepted proposals, validated requirements, Exported status */
+  --foreground: #f3f6fc;
+  --muted-foreground: #9aa4b8;
+  --faint: #5c6980;
+  --border: #1b2338;
 
-  /* Accent Colors */
-  --accent-blue: #3b82f6;
-  --accent-cyan: #38bdf8;
-  --accent-muted: #60a5fa;
-  --accent-glow: rgba(59, 130, 246, 0.15);
-
-  /* Surfaces & Canvas */
-  --surface-canvas: #000000;
-  --surface-card: #050814;
-  --surface-raised: #0b1120;
-  --surface-overlay: #1e293b;
-
-  /* Legacy Scale */
-  --navy-950: #000000;
-  --navy-900: #050814;
-  --navy-800: #0b1120;
-  --navy-700: #151f32;
-  --navy-600: #1e293b;
-  --navy-500: #334155;
-
-  /* Text */
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #64748b;
-  --text-on-accent: #ffffff;
-
-  /* Hairline Borders */
-  --border-subtle: rgba(59, 130, 246, 0.15);
-  --border-default: rgba(59, 130, 246, 0.25);
-  --border-accent: rgba(56, 189, 248, 0.4);
+  /* Legacy Scale Fallbacks */
+  --surface-canvas: var(--background);
+  --surface-card: var(--card);
+  --surface-raised: var(--card-raised);
 
   /* Semantic Overrides */
-  --background: #000000;
-  --foreground: #f8fafc;
-  --card: #050814;
-  --card-foreground: #f8fafc;
-  --popover: #0b1120;
-  --popover-foreground: #f8fafc;
-  --primary: #3b82f6;
+  --card-foreground: #f3f6fc;
+  --popover: #0d1220;
+  --popover-foreground: #f3f6fc;
   --primary-foreground: #ffffff;
-  --secondary: #151f32;
-  --secondary-foreground: #cbd5e1;
-  --muted: #0b1120;
-  --muted-foreground: #64748b;
-  --accent: #3b82f6;
-  --accent-foreground: #ffffff;
+  --secondary: #131a2c;
+  --secondary-foreground: #9aa4b8;
+  --muted: #0d1220;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(59, 130, 246, 0.2);
-  --input: #0b1120;
-  --ring: #3b82f6;
-  --radius: 4px;
+  --input: #131a2c;
+  --ring: #1060ee;
+  --radius: 6px;
 
   /* Spacing & Layout */
   --header-height: 3.75rem;
@@ -78,65 +45,67 @@
 /* ── Tailwind v4 theme extension ─────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  --color-card-raised: var(--card-raised);
   --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
+  --color-primary-bright: var(--primary-bright);
+  --color-primary-deep: var(--primary-deep);
+  --color-success: var(--success);
+  --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-faint: var(--faint);
   --color-border: var(--border);
-
-  /* Custom Palette */
-  --color-obsidian: #000000;
-  --color-cream: #f8fafc;
-  --color-gold: #3b82f6;
-  --color-ash: #64748b;
 
   /* Radii */
   --radius-sm: 4px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
   --radius-full: 100px;
 }
 
 /* ── Base styles ─────────────────────────────────────────────────────────── */
 * {
-  border-color: rgba(59, 130, 246, 0.2);
+  border-color: var(--border);
 }
 
 html {
   scroll-behavior: smooth;
-  background-color: #000000;
+  background-color: #070a14;
 }
 
 body {
-  background: #000000;
-  color: #f8fafc;
+  background: #070a14;
+  color: #f3f6fc;
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100dvh;
 }
 
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Custom Scrollbar ────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: #070a14;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #1b2338;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3b82f6;
+  background: #1060ee;
 }
 
 /* ── Marquee Animation ────────────────────────────────────────────────────── */
@@ -155,29 +124,40 @@ body {
   animation-play-state: paused;
 }
 
-/* ── Blue Text Gradient & Hairline Utilities ────────────────────────────── */
-.text-gold-gradient {
-  background: linear-gradient(135deg, #f8fafc 0%, #60a5fa 50%, #2563eb 100%);
+/* ── Primary Gradient & Hairline Utilities ────────────────────────────────── */
+.text-brand-gradient {
+  background: linear-gradient(135deg, #38b6ff 0%, #1060ee 50%, #0a2a9c 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .border-hairline {
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  border: 1px solid #1b2338;
 }
 
-.border-hairline-gold {
-  border: 1px solid rgba(59, 130, 246, 0.4);
+.border-hairline-primary {
+  border: 1px solid rgba(16, 96, 238, 0.4);
 }
 
 .pill-tag {
   border-radius: 100px;
-  border: 1px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
-  color: #60a5fa;
+  border: 1px solid rgba(56, 182, 255, 0.3);
+  background: rgba(16, 96, 238, 0.12);
+  color: #38b6ff;
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
+  padding: 4px 10px;
+}
+
+.pill-tag-success {
+  border-radius: 100px;
+  border: 1px solid rgba(47, 230, 176, 0.4);
+  background: rgba(47, 230, 176, 0.1);
+  color: #2fe6b0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
   padding: 4px 10px;
 }

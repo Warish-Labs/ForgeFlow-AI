@@ -35,6 +35,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "MD Warish Ansari", url: "https://warishlabs.in" }],
   creator: "WarishLabs",
+  icons: {
+    icon: "/Logo/forgeflow-logo-badge.svg",
+    shortcut: "/Logo/forgeflow-favicon-256.png",
+    apple: "/Logo/forgeflow-logo-badge.png",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",

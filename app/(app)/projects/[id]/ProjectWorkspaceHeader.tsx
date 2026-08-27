@@ -12,13 +12,15 @@ import { ProjectStatus } from "@prisma/client";
 import {
   ArrowLeftIcon,
   Trash2Icon,
-  LayoutDashboardIcon,
+  CompassIcon,
+  ListChecksIcon,
+  NetworkIcon,
+  MapIcon,
   ScrollTextIcon,
-  SparklesIcon,
-  LayersIcon,
-  DatabaseIcon,
   FileTextIcon,
-  BotIcon,
+  HammerIcon,
+  CircleDotIcon,
+  PackageCheckIcon,
 } from "lucide-react";
 
 interface WorkspaceHeaderProps {
@@ -32,12 +34,12 @@ interface WorkspaceHeaderProps {
 
 const statusMap: Record<
   ProjectStatus,
-  { pillClass: string; label: string }
+  { pillClass: string; label: string; isGreen: boolean }
 > = {
-  PLANNING: { pillClass: "border-[#3b82f6] text-[#60a5fa]", label: "Planning" },
-  ARCHITECTURE: { pillClass: "border-sky-400 text-sky-300", label: "Architecture" },
-  ROADMAP_READY: { pillClass: "border-emerald-400 text-emerald-300", label: "Roadmap Ready" },
-  EXPORTED: { pillClass: "border-indigo-400 text-indigo-300", label: "Exported" },
+  PLANNING: { pillClass: "border-[#1060ee] text-[#38b6ff] bg-[#1060ee]/10", label: "Planning", isGreen: false },
+  ARCHITECTURE: { pillClass: "border-[#1060ee] text-[#38b6ff] bg-[#1060ee]/10", label: "Architecture", isGreen: false },
+  ROADMAP_READY: { pillClass: "border-[#2fe6b0]/40 text-[#2fe6b0] bg-[#2fe6b0]/10", label: "Roadmap Ready", isGreen: true },
+  EXPORTED: { pillClass: "border-[#2fe6b0]/40 text-[#2fe6b0] bg-[#2fe6b0]/10", label: "Exported", isGreen: true },
 };
 
 export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
@@ -55,36 +57,29 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
     {
       href: `/projects/${project.id}`,
       label: "Overview",
-      icon: LayoutDashboardIcon,
+      icon: CompassIcon,
       exact: true,
       tooltipTitle: "Overview Tab",
-      tooltipText: "WHAT: Project overview showing completeness score, vision, tech stack manager, assumptions, and Tavily Live Search.",
+      tooltipText: "WHAT: Project overview showing completeness score, vision, tech stack manager, and Tavily Live Search.",
     },
     {
       href: `/projects/${project.id}/requirements`,
       label: "Requirements",
-      icon: ScrollTextIcon,
+      icon: ListChecksIcon,
       tooltipTitle: "Requirements Tab",
       tooltipText: "WHAT: Functional & non-functional system constraints extracted from your vision by AI synthesis.",
     },
     {
-      href: `/projects/${project.id}/features`,
-      label: "Features",
-      icon: SparklesIcon,
-      tooltipTitle: "Features Backlog Tab",
-      tooltipText: "WHAT: Prioritized feature inventory categorized by MVP, Phase 2, and Phase 3 release milestones.",
-    },
-    {
       href: `/projects/${project.id}/architecture`,
       label: "Architecture",
-      icon: LayersIcon,
+      icon: NetworkIcon,
       tooltipTitle: "Architecture & ADR Tab",
       tooltipText: "WHAT: System topology diagrams, entity data models, and Architecture Decision Records (ADRs).",
     },
     {
       href: `/projects/${project.id}/roadmap`,
       label: "Roadmap",
-      icon: DatabaseIcon,
+      icon: MapIcon,
       tooltipTitle: "Roadmap Tab",
       tooltipText: "WHAT: Sequential milestone timeline with prerequisite task dependency links for build execution.",
     },
@@ -93,7 +88,7 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
       label: "Documents",
       icon: FileTextIcon,
       tooltipTitle: "Document Specs Tab",
-      tooltipText: "WHAT: Multi-document manager to generate, edit, version-track, and export 10 PRD and technical Markdown specifications.",
+      tooltipText: "WHAT: Multi-document manager to generate, edit, version-track, and export PRD and technical Markdown specifications.",
     },
   ];
 
@@ -114,13 +109,13 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
 
   return (
     <>
-      <header className="border-b border-[#3b82f6]/20 bg-[#000000] px-4 pt-4 md:px-6">
+      <header className="border-b border-[#1b2338] bg-[#070a14] px-4 pt-4 md:px-6">
         <div className="mx-auto max-w-[1200px]">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link
                 href="/dashboard"
-                className="inline-flex h-8 w-8 items-center justify-center rounded border border-[#3b82f6]/30 bg-[#0b1120] text-[#64748b] transition-colors hover:border-[#38bdf8] hover:text-[#f8fafc]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-[#1b2338] bg-[#0d1220] text-[#5c6980] transition-colors hover:border-[#38b6ff] hover:text-[#f3f6fc]"
                 title="Back to Dashboard Workspaces"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
@@ -128,10 +123,15 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
 
               <div>
                 <div className="flex items-center gap-2.5">
-                  <h1 className="text-xl font-bold text-[#f8fafc]">
+                  <h1 className="text-xl font-bold text-[#f3f6fc]">
                     {project.name}
                   </h1>
-                  <span className={`pill-tag uppercase ${statusInfo.pillClass}`}>
+                  <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-mono font-semibold uppercase ${statusInfo.pillClass}`}>
+                    {statusInfo.isGreen ? (
+                      <PackageCheckIcon className="h-3 w-3 text-[#2fe6b0]" />
+                    ) : (
+                      <CircleDotIcon className="h-3 w-3 text-[#38b6ff]" />
+                    )}
                     {statusInfo.label}
                   </span>
                   <HelpTooltip
@@ -156,15 +156,15 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
               <div className="inline-flex items-center gap-1">
                 <button
                   onClick={() => setIsChatOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded border border-[#3b82f6] bg-[#0b1120] px-3.5 py-1.5 text-xs font-semibold text-[#38bdf8] hover:bg-[#2563eb] hover:text-white transition-all shadow-sm"
-                  title="Open AI Architecture Copilot Chat"
+                  className="inline-flex items-center gap-1.5 rounded border border-[#1060ee] bg-[#0d1220] px-3.5 py-1.5 text-xs font-semibold text-[#38b6ff] hover:bg-[#1060ee] hover:text-white transition-all shadow-sm"
+                  title="Open Anvil AI Agent Chat Drawer"
                 >
-                  <BotIcon className="h-3.5 w-3.5" />
-                  AI Copilot
+                  <HammerIcon className="h-3.5 w-3.5" />
+                  Ask Anvil
                 </button>
                 <HelpTooltip
-                  title="AI Copilot Assistant"
-                  text="WHAT: Interactive architecture copilot trained on this project's exact state with Tavily live search capabilities."
+                  title="Anvil AI Agent"
+                  text="WHAT: Interactive architecture agent trained on this project's exact state with Proposal Cards and Accept/Reject workflow."
                   side="bottom"
                 />
               </div>
@@ -183,8 +183,8 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
             </div>
           </div>
 
-          {/* Nav Tabs (No overflow clipping for tooltips) */}
-          <nav className="flex gap-1 overflow-visible border-t border-[#3b82f6]/20 pt-2 flex-wrap sm:flex-nowrap">
+          {/* Nav Tabs */}
+          <nav className="flex gap-1 overflow-visible border-t border-[#1b2338] pt-2 flex-wrap sm:flex-nowrap">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = tab.exact
@@ -197,8 +197,8 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
                     href={tab.href}
                     className={`inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
                       isActive
-                        ? "border-[#38bdf8] text-[#38bdf8] bg-[#0b1120] rounded-t font-semibold"
-                        : "border-transparent text-[#64748b] hover:border-[#3b82f6]/30 hover:text-[#f8fafc]"
+                        ? "border-[#38b6ff] text-[#38b6ff] bg-[#0d1220] rounded-t font-semibold"
+                        : "border-transparent text-[#9aa4b8] hover:border-[#1060ee]/30 hover:text-[#f3f6fc]"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -216,7 +216,7 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
         </div>
       </header>
 
-      {/* Chat Drawer */}
+      {/* Anvil Chat Drawer */}
       <ProjectChatDrawer
         projectId={project.id}
         projectName={project.name}

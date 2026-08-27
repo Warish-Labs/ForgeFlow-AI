@@ -1,266 +1,341 @@
+import Image from "next/image";
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
-import { TechLogo } from "@/components/stack/TechLogo";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/ui/Footer";
 import {
-  ArrowRightIcon,
-  SparklesIcon,
-  LayersIcon,
-  DatabaseIcon,
+  CompassIcon,
+  ListChecksIcon,
+  NetworkIcon,
+  MapIcon,
+  ScrollTextIcon,
   FileTextIcon,
-  BotIcon,
-  SearchIcon,
+  HammerIcon,
+  SparklesIcon,
+  ArrowRightIcon,
+  CheckCircle2Icon,
+  XCircleIcon,
+  DatabaseIcon,
+  LockIcon,
+  CpuIcon,
 } from "lucide-react";
 
-export default async function HomePage() {
-  const { userId } = await auth();
-
-  const techStackList = [
-    "Next.js",
-    "React",
-    "TypeScript",
-    "PostgreSQL",
-    "Prisma",
-    "TailwindCSS",
-    "Redis",
-    "Python",
-    "Docker",
-    "OpenAI",
-    "AWS",
-    "Clerk",
-    "Vitest",
-    "Supabase",
-  ];
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#000000] text-[#f8fafc] selection:bg-[#3b82f6] selection:text-white">
+    <div className="min-h-screen bg-[#070a14] text-[#f3f6fc]">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[#3b82f6]/20 bg-[#000000]/90 backdrop-blur-md px-6 py-4">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-7 w-7 rounded bg-[#2563eb] flex items-center justify-center font-bold text-white text-xs font-mono shadow-md shadow-blue-500/20">
-              FF
-            </div>
-            <span className="font-mono text-sm font-bold tracking-tight text-[#f8fafc]">
-              FORGEFLOW<span className="text-[#38bdf8]">.AI</span>
-            </span>
+      <Navbar />
+
+      {/* ── Section 1: Hero ─────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-28 border-b border-[#1b2338]">
+        {/* Glow backdrop */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[350px] w-[500px] rounded-full bg-[#1060ee]/20 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-[200px] w-[300px] rounded-full bg-[#38b6ff]/15 blur-[90px] pointer-events-none" />
+
+        <div className="relative mx-auto max-w-[1200px] px-6 text-center space-y-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#38b6ff]/30 bg-[#1060ee]/10 px-4 py-1 text-xs font-semibold text-[#38b6ff] shadow-sm">
+            <SparklesIcon className="h-3.5 w-3.5" />
+            FORGEFLOW AI PLATFORM PASS 2
           </div>
 
-          <div className="flex items-center gap-6 text-xs font-medium text-[#cbd5e1]">
-            <a href="#features" className="hover:text-[#38bdf8] transition-colors">
-              Platform Features
-            </a>
-            <a href="#stack" className="hover:text-[#38bdf8] transition-colors">
-              Tech Engine
-            </a>
-            <a href="#architecture" className="hover:text-[#38bdf8] transition-colors">
-              Architecture
-            </a>
-
-            {userId ? (
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-1.5 rounded border border-[#3b82f6] bg-[#0b1120] px-3.5 py-1.5 text-xs font-medium text-[#38bdf8] hover:bg-[#2563eb] hover:text-white transition-all shadow-sm"
-              >
-                Go to Workspace <ArrowRightIcon className="h-3.5 w-3.5" />
-              </Link>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/sign-in"
-                  className="hover:text-[#38bdf8] transition-colors"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/sign-up"
-                  className="rounded bg-[#2563eb] px-3.5 py-1.5 text-xs font-medium text-white hover:bg-[#1d4ed8] transition-all shadow-md shadow-blue-500/20"
-                >
-                  Get Started →
-                </Link>
-              </div>
-            )}
+          {/* Logo Hero Graphic */}
+          <div className="flex justify-center pt-2">
+            <Image
+              src="/Logo/forgeflow-logo-gradient.svg"
+              alt="ForgeFlow AI Gradient Mark"
+              width={80}
+              height={80}
+              priority
+              className="h-20 w-20 drop-shadow-[0_0_25px_rgba(56,182,255,0.4)]"
+            />
           </div>
-        </div>
-      </nav>
 
-      {/* Hero Section */}
-      <section className="pt-36 pb-20 px-6 max-w-[1200px] mx-auto text-center flex flex-col items-center">
-        {/* Category Tag Pill */}
-        <div className="pill-tag mb-8 uppercase tracking-widest text-[10px]">
-          INDUSTRIAL AI ARCHITECTURE SYNTHESIS ENGINE
-        </div>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-[#f3f6fc] max-w-4xl mx-auto leading-tight">
+            Turn a one-line idea into a <span className="text-brand-gradient">real engineering plan</span>
+          </h1>
 
-        {/* Hero Logo Mosaic Artifact */}
-        <div className="mb-8 grid grid-cols-5 gap-1.5 opacity-90">
-          <div className="h-4 w-4 bg-[#2563eb]" />
-          <div className="h-4 w-4 bg-[#38bdf8]/80" />
-          <div className="h-4 w-4 bg-[#2563eb]" />
-          <div className="h-4 w-4 bg-[#38bdf8]/40" />
-          <div className="h-4 w-4 bg-[#2563eb]" />
-          <div className="h-4 w-4 bg-[#38bdf8]/60" />
-          <div className="h-4 w-4 bg-[#2563eb]" />
-          <div className="h-4 w-4 bg-[#38bdf8]/90" />
-          <div className="h-4 w-4 bg-[#2563eb]" />
-          <div className="h-4 w-4 bg-[#38bdf8]/30" />
-        </div>
+          <p className="text-sm md:text-base text-[#9aa4b8] max-w-2xl mx-auto leading-relaxed">
+            Persistent project state, AI-powered architecture synthesis, and human-in-the-loop planning. Never lose context in disposable AI chat windows.
+          </p>
 
-        {/* Hero Headline */}
-        <h1 className="text-3xl md:text-[44px] font-normal tracking-[-1.85px] leading-[1.13] text-[#f8fafc] max-w-[720px] mb-6">
-          Architectural Precision Engine for Production Engineering
-        </h1>
-
-        <p className="text-sm md:text-base text-[#cbd5e1] max-w-[580px] leading-relaxed mb-10">
-          Synthesize full-stack software blueprints, enforce strict ADR records, generate version-tracked specifications, and perform live web tech research.
-        </p>
-
-        {/* Action Button & Ghost Link */}
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Link
-            href={userId ? "/dashboard" : "/sign-up"}
-            className="inline-flex items-center gap-2 rounded bg-[#2563eb] px-6 py-3 text-xs font-semibold text-white hover:bg-[#1d4ed8] transition-all shadow-lg shadow-blue-500/25"
-          >
-            {userId ? "Open Dashboard Workspace" : "Start Building Free"} <ArrowRightIcon className="h-4 w-4" />
-          </Link>
-          <a
-            href="#features"
-            className="inline-flex items-center gap-1 text-xs text-[#f8fafc] hover:text-[#38bdf8] transition-colors py-2"
-          >
-            Explore Platform Features →
-          </a>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+            <Link
+              href="/dashboard"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded bg-[#1060ee] px-6 py-3 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all shadow-lg shadow-blue-500/25"
+            >
+              Start a Project <ArrowRightIcon className="h-4 w-4" />
+            </Link>
+            <a
+              href="#how-it-works"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded border border-[#1b2338] bg-[#0d1220] px-6 py-3 text-xs font-medium text-[#f3f6fc] hover:bg-[#131a2c] hover:border-[#38b6ff]/40 transition-all"
+            >
+              See How It Works
+            </a>
+          </div>
         </div>
       </section>
 
-      {/* Interactive Tech Marquee */}
-      <section id="stack" className="py-12 border-y border-[#3b82f6]/20 bg-[#050814] overflow-hidden">
-        <div className="text-center mb-6">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-[#64748b]">
-            SUPPORTED FRAMEWORKS & INFRASTRUCTURE LOGOS
-          </span>
-        </div>
-        <div className="relative w-full overflow-hidden">
-          <div className="animate-marquee gap-8 items-center py-2">
-            {[...techStackList, ...techStackList].map((tech, idx) => (
-              <div
-                key={idx}
-                className="inline-flex items-center gap-2 rounded-[100px] border border-[#3b82f6]/25 bg-[#0b1120] px-4 py-1.5 text-xs text-[#f8fafc] shrink-0 hover:border-[#38bdf8] transition-colors"
-              >
-                <TechLogo name={tech} className="h-4 w-4 shrink-0" />
-                <span className="font-mono text-xs text-[#f8fafc]">{tech}</span>
+      {/* ── Section 2: Why Project State Beats Chat History ─────────────────── */}
+      <section className="py-20 px-6 border-b border-[#1b2338] bg-[#070a14]">
+        <div className="mx-auto max-w-[1200px] space-y-12">
+          <div className="text-center space-y-3">
+            <span className="pill-tag uppercase">PLATFORM THESIS</span>
+            <h2 className="text-2xl md:text-4xl font-bold text-[#f3f6fc]">
+              Why Project State Beats Chat History
+            </h2>
+            <p className="text-xs md:text-sm text-[#9aa4b8] max-w-xl mx-auto">
+              Generic chat windows output disposable text that gets forgotten. ForgeFlow maintains a single source of truth saved in PostgreSQL.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Generic Chat Column */}
+            <div className="rounded-xl border border-red-900/30 bg-[#0d1220] p-6 space-y-4">
+              <div className="flex items-center gap-2 text-red-400 font-semibold text-sm">
+                <XCircleIcon className="h-5 w-5 shrink-0" />
+                <span>Generic AI Chat History</span>
               </div>
+              <ul className="space-y-3 text-xs text-[#9aa4b8]">
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 font-bold">•</span>
+                  <span>Forgets architectural decisions after 10 messages</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 font-bold">•</span>
+                  <span>Outputs unstructured, raw text dumps requiring manual parsing</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-red-400 font-bold">•</span>
+                  <span>No single-tenant database backing or version-controlled PRDs</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* ForgeFlow Project State Column */}
+            <div className="rounded-xl border border-[#2fe6b0]/40 bg-[#0d1220] p-6 space-y-4 shadow-xl shadow-emerald-500/5">
+              <div className="flex items-center gap-2 text-[#2fe6b0] font-semibold text-sm">
+                <CheckCircle2Icon className="h-5 w-5 shrink-0" />
+                <span>ForgeFlow Persistent Project State</span>
+              </div>
+              <ul className="space-y-3 text-xs text-[#f3f6fc]">
+                <li className="flex items-start gap-2">
+                  <span className="text-[#2fe6b0] font-bold">•</span>
+                  <span><strong>Single Source of Truth</strong>: Requirements, stack, and roadmap persisted in relational DB</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#2fe6b0] font-bold">•</span>
+                  <span><strong>Anvil Proposal Engine</strong>: Human-in-the-loop Accept/Reject confirmation before state updates</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#2fe6b0] font-bold">•</span>
+                  <span><strong>Immutable Decision Log</strong>: Track why technologies were chosen with ADR records</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 3: How It Works ─────────────────────────────────────────── */}
+      <section id="how-it-works" className="py-20 px-6 border-b border-[#1b2338] bg-[#070a14]">
+        <div className="mx-auto max-w-[1200px] space-y-12">
+          <div className="text-center space-y-3">
+            <span className="pill-tag uppercase">5-STEP ARCHITECTURE PIPELINE</span>
+            <h2 className="text-2xl md:text-4xl font-bold text-[#f3f6fc]">
+              From Vision to Production Blueprint
+            </h2>
+            <p className="text-xs md:text-sm text-[#9aa4b8] max-w-xl mx-auto">
+              Follow a clear, deterministic workflow from initial software concept to exported PRD markdown specifications.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {[
+              {
+                step: "01",
+                icon: CompassIcon,
+                title: "Describe Vision",
+                desc: "Enter a high-level one-line prompt explaining what you want to build.",
+              },
+              {
+                step: "02",
+                icon: ListChecksIcon,
+                title: "Synthesize Scope",
+                desc: "AI extracts functional requirements and system performance constraints.",
+              },
+              {
+                step: "03",
+                icon: NetworkIcon,
+                title: "Select Tech Stack",
+                desc: "Receive a reasoned tech stack with named alternatives and ADR rationale.",
+              },
+              {
+                step: "04",
+                icon: MapIcon,
+                title: "Map Roadmap",
+                desc: "Synthesize MVP, Phase 2, and Phase 3 milestone dependency tasks.",
+              },
+              {
+                step: "05",
+                icon: FileTextIcon,
+                title: "Export Specs",
+                desc: "Download 10 structured Markdown specs ready for developer handoff.",
+              },
+            ].map((st) => {
+              const Icon = st.icon;
+              return (
+                <div
+                  key={st.step}
+                  className="rounded-xl border border-[#1b2338] bg-[#0d1220] p-5 space-y-3 relative group hover:border-[#1060ee] transition-all"
+                >
+                  <div className="flex items-center justify-between text-[#5c6980]">
+                    <span className="font-mono text-xs font-bold">{st.step}</span>
+                    <Icon className="h-5 w-5 text-[#38b6ff]" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-[#f3f6fc] group-hover:text-[#38b6ff] transition-colors">
+                    {st.title}
+                  </h3>
+                  <p className="text-xs text-[#9aa4b8] leading-relaxed">
+                    {st.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 4: What You Get (Feature Grid) ─────────────────────────── */}
+      <section id="features" className="py-20 px-6 border-b border-[#1b2338] bg-[#070a14]">
+        <div className="mx-auto max-w-[1200px] space-y-12">
+          <div className="text-center space-y-3">
+            <span className="pill-tag uppercase">PLATFORM CAPABILITIES</span>
+            <h2 className="text-2xl md:text-4xl font-bold text-[#f3f6fc]">
+              What You Get in ForgeFlow
+            </h2>
+            <p className="text-xs md:text-sm text-[#9aa4b8] max-w-xl mx-auto">
+              Everything needed to plan, design, and document complex software systems.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                icon: ListChecksIcon,
+                title: "Structured Requirements",
+                desc: "AI extracts functional scope and non-functional scalability bounds.",
+              },
+              {
+                icon: NetworkIcon,
+                title: "Reasoned Tech Stack",
+                desc: "Get framework recommendations with explicit trade-offs and alternatives.",
+              },
+              {
+                icon: ScrollTextIcon,
+                title: "Searchable Decision Log",
+                desc: "Maintain immutable ADR records explaining why technical choices were made.",
+              },
+              {
+                icon: MapIcon,
+                title: "Phased Roadmap",
+                desc: "Sequential milestone timeline with prerequisite task dependency links.",
+              },
+              {
+                icon: HammerIcon,
+                title: "Anvil AI Agent",
+                desc: "Interactive assistant with Proposal Cards and Accept/Reject confirmation.",
+              },
+              {
+                icon: FileTextIcon,
+                title: "Markdown Export",
+                desc: "Export PRDs, technical architecture, and database schemas as Markdown.",
+              },
+              {
+                icon: CpuIcon,
+                title: "Tavily Web Research",
+                desc: "Live search integration to benchmark packages and tech documentation.",
+              },
+              {
+                icon: LockIcon,
+                title: "Single-Tenant Security",
+                desc: "Strict owner isolation guarantees project data privacy.",
+              },
+            ].map((feat, idx) => {
+              const Icon = feat.icon;
+              return (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-[#1b2338] bg-[#0d1220] p-5 space-y-3 hover:border-[#1060ee]/60 transition-all"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded border border-[#1060ee]/30 bg-[#131a2c] text-[#38b6ff]">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-[#f3f6fc]">
+                    {feat.title}
+                  </h3>
+                  <p className="text-xs text-[#9aa4b8] leading-relaxed">
+                    {feat.desc}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 5: Built With Tech Badges ──────────────────────────────── */}
+      <section id="stack" className="py-16 px-6 border-b border-[#1b2338] bg-[#070a14]">
+        <div className="mx-auto max-w-[1200px] text-center space-y-6">
+          <span className="font-mono text-xs uppercase tracking-wider text-[#5c6980]">
+            POWERED BY MODERN ENGINEERING INFRASTRUCTURE
+          </span>
+          <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-xs text-[#f3f6fc]">
+            {[
+              "Next.js 15",
+              "TypeScript",
+              "LangGraph.js",
+              "Prisma ORM",
+              "PostgreSQL",
+              "Clerk Auth",
+              "Tavily API",
+              "TailwindCSS",
+              "Vitest",
+            ].map((tech) => (
+              <span
+                key={tech}
+                className="rounded border border-[#1b2338] bg-[#0d1220] px-3.5 py-1.5 text-[11px] text-[#38b6ff] shadow-sm"
+              >
+                {tech}
+              </span>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 3-Column Grid Features Section */}
-      <section id="features" className="py-24 px-6 max-w-[1200px] mx-auto space-y-12">
-        <div className="text-center space-y-3">
-          <div className="pill-tag uppercase tracking-widest text-[10px] inline-block">
-            ATOMS INDUSTRIAL PLATFORM
-          </div>
-          <h2 className="text-2xl md:text-3xl font-normal tracking-[-1px] text-[#f8fafc]">
-            Machined Components for Architectural Excellence
+      {/* ── Section 6: Final CTA Band ──────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-[#070a14] relative overflow-hidden">
+        <div className="mx-auto max-w-[1200px] rounded-2xl border border-[#1060ee]/40 bg-[#0d1220] p-10 md:p-16 text-center space-y-6 relative shadow-2xl">
+          <div className="h-32 w-64 absolute -top-16 left-1/2 -translate-x-1/2 bg-[#1060ee]/20 blur-[80px] pointer-events-none" />
+
+          <h2 className="text-3xl md:text-5xl font-bold text-[#f3f6fc]">
+            Ready to Architect Your Next Application?
           </h2>
-        </div>
+          <p className="text-xs md:text-sm text-[#9aa4b8] max-w-xl mx-auto leading-relaxed">
+            Create your first architecture project blueprint in seconds with persistent state and Anvil AI agent assistance.
+          </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1 */}
-          <div className="rounded border border-[#3b82f6]/20 bg-[#050814] p-8 space-y-4 hover:border-[#3b82f6] transition-all">
-            <div className="h-10 w-10 rounded border border-[#3b82f6]/40 bg-[#0b1120] flex items-center justify-center">
-              <SparklesIcon className="h-5 w-5 text-[#38bdf8]" />
-            </div>
-            <h3 className="text-base font-medium text-[#f8fafc]">AI Requirement Synthesis</h3>
-            <p className="text-xs text-[#cbd5e1] leading-relaxed">
-              LangGraph-powered multi-stage analysis converts raw software vision into validated functional & non-functional technical scope.
-            </p>
-            <div className="pt-2 border-t border-[#3b82f6]/15 flex items-center gap-1 text-xs text-[#38bdf8]">
-              <span>Zero-Unvalidated Output</span> →
-            </div>
-          </div>
-
-          {/* Card 2 */}
-          <div className="rounded border border-[#3b82f6]/20 bg-[#050814] p-8 space-y-4 hover:border-[#3b82f6] transition-all">
-            <div className="h-10 w-10 rounded border border-[#3b82f6]/40 bg-[#0b1120] flex items-center justify-center">
-              <LayersIcon className="h-5 w-5 text-[#38bdf8]" />
-            </div>
-            <h3 className="text-base font-medium text-[#f8fafc]">System Topology & ADRs</h3>
-            <p className="text-xs text-[#cbd5e1] leading-relaxed">
-              Model component boundaries, entity data schemas, and immutable Architecture Decision Records (ADRs) with explicit trade-off rationale.
-            </p>
-            <div className="pt-2 border-t border-[#3b82f6]/15 flex items-center gap-1 text-xs text-[#38bdf8]">
-              <span>Relational Integrity</span> →
-            </div>
-          </div>
-
-          {/* Card 3 */}
-          <div className="rounded border border-[#3b82f6]/20 bg-[#050814] p-8 space-y-4 hover:border-[#3b82f6] transition-all">
-            <div className="h-10 w-10 rounded border border-[#3b82f6]/40 bg-[#0b1120] flex items-center justify-center">
-              <SearchIcon className="h-5 w-5 text-[#38bdf8]" />
-            </div>
-            <h3 className="text-base font-medium text-[#f8fafc]">Tavily Live Web Search</h3>
-            <p className="text-xs text-[#cbd5e1] leading-relaxed">
-              Query real-time web documentation, benchmark comparisons, and framework updates directly inside your project architecture workspace.
-            </p>
-            <div className="pt-2 border-t border-[#3b82f6]/15 flex items-center gap-1 text-xs text-[#38bdf8]">
-              <span>Live Web Search Tool</span> →
-            </div>
-          </div>
-
-          {/* Card 4 */}
-          <div className="rounded border border-[#3b82f6]/20 bg-[#050814] p-8 space-y-4 hover:border-[#3b82f6] transition-all">
-            <div className="h-10 w-10 rounded border border-[#3b82f6]/40 bg-[#0b1120] flex items-center justify-center">
-              <DatabaseIcon className="h-5 w-5 text-[#38bdf8]" />
-            </div>
-            <h3 className="text-base font-medium text-[#f8fafc]">Implementation Roadmap</h3>
-            <p className="text-xs text-[#cbd5e1] leading-relaxed">
-              Sequenced delivery milestones (MVP, Phase 2, Phase 3) with explicit prerequisite dependency graph tracking.
-            </p>
-            <div className="pt-2 border-t border-[#3b82f6]/15 flex items-center gap-1 text-xs text-[#38bdf8]">
-              <span>Dependency Graph</span> →
-            </div>
-          </div>
-
-          {/* Card 5 */}
-          <div className="rounded border border-[#3b82f6]/20 bg-[#050814] p-8 space-y-4 hover:border-[#3b82f6] transition-all">
-            <div className="h-10 w-10 rounded border border-[#3b82f6]/40 bg-[#0b1120] flex items-center justify-center">
-              <FileTextIcon className="h-5 w-5 text-[#38bdf8]" />
-            </div>
-            <h3 className="text-base font-medium text-[#f8fafc]">10 Document Specs Workspace</h3>
-            <p className="text-xs text-[#cbd5e1] leading-relaxed">
-              Synthesize, version-track, live edit, and download unified `.md` specifications for PRD, Architecture, Security, and Database blueprints.
-            </p>
-            <div className="pt-2 border-t border-[#3b82f6]/15 flex items-center gap-1 text-xs text-[#38bdf8]">
-              <span>Versioned Specs</span> →
-            </div>
-          </div>
-
-          {/* Card 6 */}
-          <div className="rounded border border-[#3b82f6]/20 bg-[#050814] p-8 space-y-4 hover:border-[#3b82f6] transition-all">
-            <div className="h-10 w-10 rounded border border-[#3b82f6]/40 bg-[#0b1120] flex items-center justify-center">
-              <BotIcon className="h-5 w-5 text-[#38bdf8]" />
-            </div>
-            <h3 className="text-base font-medium text-[#f8fafc]">AI Architecture Copilot</h3>
-            <p className="text-xs text-[#cbd5e1] leading-relaxed">
-              Domain-guarded interactive copilot trained on your exact project state with formatted Markdown responses and single-tenant privacy.
-            </p>
-            <div className="pt-2 border-t border-[#3b82f6]/15 flex items-center gap-1 text-xs text-[#38bdf8]">
-              <span>Topic Restriction Guard</span> →
-            </div>
+          <div className="pt-2">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded bg-[#1060ee] px-8 py-3.5 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all shadow-xl shadow-blue-500/30"
+            >
+              Start Free Workspace <ArrowRightIcon className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[#3b82f6]/20 py-12 px-6 bg-[#050814]">
-        <div className="mx-auto flex max-w-[1200px] flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#64748b]">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 rounded bg-[#2563eb] flex items-center justify-center text-[8px] font-bold text-white">FF</div>
-            <span className="font-mono text-[#f8fafc]">FORGEFLOW AI</span>
-            <span>— Precision Software Architecture Engine</span>
-          </div>
-          <div>Electric Blue Palette • PostgreSQL • LangGraph • Tavily API</div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

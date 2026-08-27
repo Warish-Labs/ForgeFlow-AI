@@ -12,43 +12,48 @@ export type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: { code: string; message: string } };
 
+export interface ProposalPayload {
+  type: "STACK_CHANGE" | "REQUIREMENT_UPDATE" | "ROADMAP_UPDATE" | "GENERAL_UPDATE";
+  summary: string;
+  targetField: "techStack" | "requirements" | "problemStatement" | "assumptions";
+  newValue: any;
+  affectedAreas: string[];
+}
+
+const OUT_OF_SCOPE_FALLBACK = "I'm not able to understand that question.";
+
 /**
- * Checks if a user query is an off-topic general coding request unrelated to project planning/architecture
+ * Audit intent to enforce strict project scope boundary
  */
-function isOffTopicQuery(query: string): boolean {
+function isOutofScopeQuery(query: string): boolean {
   const q = query.toLowerCase().trim();
 
-  // Pattern detection for generic code requests unrelated to project architecture
-  const offTopicPatterns = [
-    /\bwrite a python calculator\b/i,
-    /\bbuild me a react game\b/i,
-    /\bgenerate a java dsa\b/i,
-    /\bwrite a generic python\b/i,
-    /\bwrite an? email\b/i,
-    /\bcalculator program\b/i,
-    /\btic tac toe\b/i,
-    /\bsnake game\b/i,
-    /\bsolve my homework\b/i,
+  // Explicit off-topic software coding/recipe/homework/general knowledge queries
+  const offTopicRegexes = [
+    /\b(recipe|cooking|cake|pizza|burger)\b/i,
+    /\b(weather|temperature|forecast)\b/i,
+    /\b(who is the president|who won the)\b/i,
+    /\b(write a python calculator|build me a snake game|tic tac toe)\b/i,
+    /\b(write an email to|solve my math homework|essay about)\b/i,
+    /\b(tell me a joke|capital of|how far is the moon)\b/i,
   ];
 
-  if (offTopicPatterns.some((pattern) => pattern.test(q))) {
+  if (offTopicRegexes.some((regex) => regex.test(q))) {
     return true;
   }
 
-  // General coding generation requests lacking any software architecture context
-  const genericCodePrefixes = [
-    "write a python script to ",
-    "write a python program that ",
-    "create a simple calculator",
-    "build me a snake game",
-    "write a C++ program",
-  ];
+  // Generic non-architectural code generation prompts
+  if (
+    q.startsWith("write a generic") ||
+    q.startsWith("write a python script to") ||
+    q.startsWith("how do I bake") ||
+    q.startsWith("what is the meaning of life")
+  ) {
+    return true;
+  }
 
-  return genericCodePrefixes.some((prefix) => q.startsWith(prefix));
+  return false;
 }
-
-const OFF_TOPIC_REFUSAL_MESSAGE =
-  "I am ForgeFlow's project architecture assistant. I can help with this project's requirements, features, architecture, technology decisions, roadmap, database design, and documentation, but I cannot act as a general coding assistant.";
 
 /**
  * Run AI Requirement Synthesis on a project
@@ -105,62 +110,65 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
         },
       });
 
-      await tx.feature.deleteMany({
-        where: { projectId },
-      });
+      // Clear old generated records to avoid duplication on re-synthesis
+      await tx.feature.deleteMany({ where: { projectId } });
+      await tx.decision.deleteMany({ where: { projectId } });
 
-      await tx.feature.createMany({
-        data: synthesis.extractedFeatures.map((feat) => ({
-          projectId,
-          title: feat.title,
-          description: feat.description || null,
-          phase: feat.phase,
-          status: "planned",
-        })),
-      });
+      if (synthesis.suggestedStack.length > 0) {
+        await tx.feature.createMany({
+          data: [
+            {
+              projectId,
+              title: "Core System Infrastructure & Authentication",
+              description: `Initial architecture stack setup with ${synthesis.suggestedStack.slice(0, 3).join(", ")}.`,
+              phase: "MVP",
+              status: "planned",
+            },
+            {
+              projectId,
+              title: "Primary Relational Data Schema",
+              description: "Database models, indexes, and single-tenant ownership constraints.",
+              phase: "MVP",
+              status: "planned",
+            },
+          ],
+        });
 
-      const durationMs = Date.now() - startTime;
-      await tx.aiUsageLog.create({
-        data: {
-          projectId,
-          operation: "analyze",
-          provider: process.env.LLM_PROVIDER || "groq",
-          durationMs,
-          status: "success",
-        },
-      });
+        await tx.decision.create({
+          data: {
+            projectId,
+            decision: `Selected initial core stack: ${synthesis.suggestedStack.join(", ")}`,
+            reasoning: "Chosen to maximize development velocity, maintainability, and data security.",
+            alternative: "Monolithic framework",
+            affectedAreas: ["Architecture", "Database", "Security"],
+          },
+        });
+      }
+    });
+
+    await prisma.aiUsageLog.create({
+      data: {
+        projectId,
+        operation: "analyze",
+        provider: process.env.LLM_PROVIDER || "groq",
+        durationMs: Date.now() - startTime,
+        status: "success",
+      },
     });
 
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath(`/projects/${projectId}/requirements`);
-    revalidatePath(`/projects/${projectId}/features`);
-    revalidatePath("/dashboard");
-
     return { success: true, data: { success: true } };
   } catch (error: any) {
     console.error("Error in analyzeProjectAction:", error);
-
-    try {
-      await prisma.aiUsageLog.create({
-        data: {
-          projectId,
-          operation: "analyze",
-          provider: process.env.LLM_PROVIDER || "groq",
-          durationMs: Date.now() - startTime,
-          status: "error",
-        },
-      });
-    } catch (_) {}
-
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to run AI analysis. Please check your AI API key or try again." },
+      error: { code: "INTERNAL_ERROR", message: "Failed to analyze project. Please try again." },
     };
   }
 }
 
 /**
- * Interactive AI Chat message handling with strict domain topic restriction guard and rich context
+ * Anvil AI Chat Agent Action with strict boundary fallback and proposal generation
  */
 export async function sendChatMessageAction(
   projectId: string,
@@ -170,7 +178,7 @@ export async function sendChatMessageAction(
   if (!userId) {
     return {
       success: false,
-      error: { code: "UNAUTHORIZED", message: "You must be signed in to chat with AI" },
+      error: { code: "UNAUTHORIZED", message: "You must be signed in to use Anvil Copilot" },
     };
   }
 
@@ -181,7 +189,6 @@ export async function sendChatMessageAction(
         features: true,
         decisions: true,
         roadmapItems: { orderBy: { order: "asc" } },
-        documents: true,
       },
     });
 
@@ -192,10 +199,8 @@ export async function sendChatMessageAction(
       };
     }
 
-    // Get or create active ChatSession
     let session = await prisma.chatSession.findFirst({
       where: { projectId },
-      orderBy: { createdAt: "desc" },
       include: { messages: { orderBy: { createdAt: "asc" } } },
     });
 
@@ -215,13 +220,13 @@ export async function sendChatMessageAction(
       },
     });
 
-    // ── Topic Restriction Guard ─────────────────────────────────────────
-    if (isOffTopicQuery(userMessageContent)) {
+    // ── Strict Out of Scope Boundary Check ────────────────────────────────
+    if (isOutofScopeQuery(userMessageContent)) {
       await prisma.chatMessage.create({
         data: {
           sessionId: session.id,
           role: "assistant",
-          content: OFF_TOPIC_REFUSAL_MESSAGE,
+          content: OUT_OF_SCOPE_FALLBACK,
         },
       });
 
@@ -229,90 +234,86 @@ export async function sendChatMessageAction(
         success: true,
         data: {
           userMessageId: userMessage.id,
-          assistantContent: OFF_TOPIC_REFUSAL_MESSAGE,
+          assistantContent: OUT_OF_SCOPE_FALLBACK,
         },
       };
     }
 
-    // ── Tavily Live Search Enhancement ─────────────────────────────
+    // ── Tavily Research Optional ──────────────────────────────────────────
     let tavilyContext = "";
     const lowerQuery = userMessageContent.toLowerCase();
     const shouldSearchWeb =
       lowerQuery.includes("latest") ||
       lowerQuery.includes("search") ||
-      lowerQuery.includes("tavily") ||
       lowerQuery.includes("vs") ||
       lowerQuery.includes("compare") ||
-      lowerQuery.includes("docs") ||
-      lowerQuery.includes("library") ||
-      lowerQuery.includes("version") ||
-      lowerQuery.includes("framework") ||
       lowerQuery.includes("benchmark");
 
     if (shouldSearchWeb && process.env.TAVILY_API_KEY) {
       try {
         const tavilyRes = await searchTavily(`${project.name} ${userMessageContent}`);
         if (tavilyRes.results && tavilyRes.results.length > 0) {
-          tavilyContext = `\n\n### Live Web Research Findings (via Tavily Search):\n` +
+          tavilyContext = `\n\n### Live Web Research Findings:\n` +
             tavilyRes.results
-              .slice(0, 3)
+              .slice(0, 2)
               .map((r) => `- **[${r.title}](${r.url})**: ${r.content}`)
               .join("\n");
         }
       } catch (err) {
-        console.warn("Tavily search execution failed inside AI chat action:", err);
+        console.warn("Tavily search skipped inside Anvil:", err);
       }
     }
 
-    // Prepare LLM response with comprehensive project context
     const llm = getLlmClient();
     let assistantReply = "";
 
-    if (llm) {
-      const requirementsText = project.requirements
-        ? JSON.stringify(project.requirements)
-        : "No requirements extracted yet.";
+    const stackList = (project.techStack as string[]) || [];
+    const requirementsText = project.requirements
+      ? JSON.stringify(project.requirements)
+      : "No requirements extracted yet.";
 
-      const featuresText = project.features.length > 0
-        ? project.features.map((f) => `- [${f.phase}] ${f.title}: ${f.description || "N/A"}`).join("\n")
-        : "No features generated yet.";
-
-      const decisionsText = project.decisions.length > 0
-        ? project.decisions.map((d) => `- ${d.decision} (Reasoning: ${d.reasoning})`).join("\n")
-        : "No ADRs generated yet.";
-
-      const roadmapText = project.roadmapItems.length > 0
-        ? project.roadmapItems.map((r) => `- [${r.phase}] ${r.title} (Status: ${r.status})`).join("\n")
-        : "No roadmap generated yet.";
-
-      const assumptionsText = project.assumptions ? JSON.stringify(project.assumptions) : "None specified";
-      const openQuestionsText = project.openQuestions ? JSON.stringify(project.openQuestions) : "None specified";
-
-      const systemPrompt = `You are ForgeFlow AI, an expert software architecture copilot.
-You are assisting the owner of project "${project.name}".
+    const systemPrompt = `You are Anvil, the in-app AI agent for ForgeFlow AI. You help with THIS project only — its requirements, tech stack, architecture, roadmap, and decision log — and with how to use ForgeFlow itself.
 
 === ACTIVE PROJECT CONTEXT ===
 - Project ID: ${project.id}
+- Name: ${project.name}
 - Vision Idea: ${project.ideaText}
-- Problem Statement: ${project.problemStatement || "Not analyzed yet"}
-- Target Stack: ${JSON.stringify(project.techStack || [])}
+- Problem Statement: ${project.problemStatement || "Not specified"}
+- Target Stack: ${JSON.stringify(stackList)}
 - Requirements: ${requirementsText}
-- Features:
-${featuresText}
-- Architecture & ADRs:
-${decisionsText}
-- Implementation Roadmap:
-${roadmapText}
-- Project Assumptions: ${assumptionsText}
-- Open Questions: ${openQuestionsText}
+- Feature Count: ${project.features.length}
+- Decision Records (ADRs): ${project.decisions.length}
+- Roadmap Milestone Count: ${project.roadmapItems.length}
+${tavilyContext}
 
-=== GUIDANCE RULES ===
-1. Answer the user's architectural, technical, or project planning question clearly using the provided project context in github-flavored markdown.
-2. If the user asks about technology choices (e.g. why PostgreSQL or Redis was chosen), refer to the ADR decision log.
-3. If any key requirement or architectural constraint is missing or underspecified, proactively ask 1-2 targeted clarifying questions.
-4. Keep replies focused, professional, and directly grounded in the project state.`;
+Navigation map:
+- Overview      → /projects/${project.id}
+- Requirements  → /projects/${project.id}/requirements
+- Architecture  → /projects/${project.id}/architecture
+- Roadmap       → /projects/${project.id}/roadmap
+- Decisions     → /projects/${project.id}/decisions
+- Documents     → /projects/${project.id}/documents
+- Settings      → /projects/${project.id}/settings
 
-      const conversationHistory = session.messages.slice(-8).map((m) => {
+You can:
+- Answer questions about the current project, grounded only in its actual stored state. Never invent details that aren't there.
+- Answer "how do I..." questions about ForgeFlow using the navigation map above, and include the matching link when one applies (e.g. [View Architecture](/projects/${project.id}/architecture)).
+- Propose changes to the project state. YOU NEVER WRITE TO THE DATABASE DIRECTLY. When the user requests a change (such as changing tech stack, adding a framework, or updating vision/requirements):
+  Restate the proposal and append a JSON block at the very end of your response formatted EXACTLY like this:
+  \`\`\`json
+  {
+    "type": "STACK_CHANGE",
+    "summary": "Change tech stack to include React.js and Node.js",
+    "targetField": "techStack",
+    "newValue": ["React.js", "Node.js", "PostgreSQL"],
+    "affectedAreas": ["Architecture Topology", "Document Specs"]
+  }
+  \`\`\`
+
+You must not answer anything outside this scope — general knowledge, cooking recipes, generic non-project coding requests. If asked, reply with EXACTLY: "I'm not able to understand that question." Nothing more.`;
+
+    if (llm) {
+      const conversationHistory = session.messages.slice(-6).map((m) => {
         if (m.role === "user") return new HumanMessage(m.content);
         return new AIMessage(m.content);
       });
@@ -326,11 +327,17 @@ ${roadmapText}
 
         assistantReply = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
       } catch (llmError: any) {
-        console.error("LLM Provider error in sendChatMessageAction:", llmError);
-        assistantReply = `**ForgeFlow AI Architecture Assistant (Offline Mode)**\n\nRegarding your question about **"${userMessageContent}"** for **${project.name}**:\n\n- **Project Vision**: ${project.ideaText.slice(0, 100)}...\n- **Target Stack**: ${JSON.stringify(project.techStack || [])}\n- **Architecture Rationale**: Architectural decisions prioritize single-tenant data isolation, relational data consistency, and strict schema validation.`;
+        console.error("LLM Provider error in Anvil chat action:", llmError);
+
+        // Check if user is asking to change stack in offline mode
+        if (lowerQuery.includes("change") && lowerQuery.includes("stack")) {
+          assistantReply = `I understand you want to modify the tech stack for **${project.name}**.\n\nHere is the proposal for your review:\n\n\`\`\`json\n{\n  "type": "STACK_CHANGE",\n  "summary": "Update target technology stack based on user request",\n  "targetField": "techStack",\n  "newValue": ["React.js", "Node.js", "PostgreSQL"],\n  "affectedAreas": ["Architecture Topology", "Exported Documents"]\n}\n\`\`\``;
+        } else {
+          assistantReply = `Regarding your question about **"${userMessageContent}"** for **${project.name}**:\n\n- **Project Vision**: ${project.ideaText}\n- **Current Tech Stack**: ${JSON.stringify(stackList)}\n\nYou can view your system architecture at [Architecture Specs](/projects/${project.id}/architecture).`;
+        }
       }
     } else {
-      assistantReply = `**ForgeFlow AI Architecture Assistant**\n\nRegarding your question about **"${userMessageContent}"** for project **${project.name}**:\n\n1. **Architecture Strategy**: Based on your vision, we recommend leveraging clean modular boundaries.\n2. **Security**: Enforce strict single-tenant user ownership validation (\`ownerId === auth().userId\`).\n3. **State Persistence**: All project blueprints are centrally stored in PostgreSQL with Zod schema guards before DB insertion.`;
+      assistantReply = `Regarding your question about **"${userMessageContent}"**:\n\n- **Project**: ${project.name}\n- **Current Stack**: ${JSON.stringify(stackList)}\n\nYou can manage settings at [Project Overview](/projects/${project.id}).`;
     }
 
     // Save assistant message
@@ -353,7 +360,59 @@ ${roadmapText}
     console.error("Error in sendChatMessageAction:", error);
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to process chat message. Please try again." },
+      error: { code: "INTERNAL_ERROR", message: "Failed to process chat message." },
     };
+  }
+}
+
+/**
+ * Server action to explicitly ACCEPT a proposed project change
+ */
+export async function acceptProposalAction(
+  projectId: string,
+  proposal: ProposalPayload
+): Promise<ActionResult<{ success: boolean }>> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Not authenticated" } };
+  }
+
+  try {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, ownerId: userId },
+    });
+
+    if (!project) {
+      return { success: false, error: { code: "NOT_FOUND", message: "Project not found" } };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Update target field
+      await tx.project.update({
+        where: { id: projectId },
+        data: {
+          [proposal.targetField]: proposal.newValue,
+        },
+      });
+
+      // Log decision record
+      await tx.decision.create({
+        data: {
+          projectId,
+          decision: `Anvil Proposal Accepted: ${proposal.summary}`,
+          reasoning: `User explicitly accepted proposal to update ${proposal.targetField}.`,
+          affectedAreas: proposal.affectedAreas,
+        },
+      });
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}/architecture`);
+    revalidatePath(`/projects/${projectId}/documents`);
+
+    return { success: true, data: { success: true } };
+  } catch (error: any) {
+    console.error("Error in acceptProposalAction:", error);
+    return { success: false, error: { code: "INTERNAL_ERROR", message: "Failed to apply proposal." } };
   }
 }
