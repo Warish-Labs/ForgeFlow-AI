@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: forgeflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: forgeflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - forgeflow_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  forgeflow_postgres_data:
