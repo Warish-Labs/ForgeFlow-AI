@@ -1,26 +1,209 @@
+/* ─────────────────────────────────────────────────────────────────────────── *
+ *  ForgeFlow AI — Global CSS Design System                                    *
+ *  Tokens derived from the OG brand image (Docs/og-image.png):               *
+ *    Navy base: #080e1f  |  Blue accent: #1a6fff  |  Cyan glow: #00d4ff      *
+ *    Muted blue: #8ab3ff  |  Surface: #0d1529  |  Border: #1a2544           *
+ * ─────────────────────────────────────────────────────────────────────────── */
+
 @import "tailwindcss";
 
+/* ── Typography fonts loaded in layout.tsx via next/font ─────────────────── */
+
+/* ── Brand design tokens ─────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base palette — derived from og-image.png */
+  --navy-950: #040a18;
+  --navy-900: #080e1f;
+  --navy-800: #0d1529;
+  --navy-700: #121d38;
+  --navy-600: #1a2544;
+  --navy-500: #243060;
+
+  /* Accent — the glowing blue/cyan from og-image nodes */
+  --accent-blue: #1a6fff;
+  --accent-cyan: #00d4ff;
+  --accent-muted: #8ab3ff;
+  --accent-glow: rgba(0, 212, 255, 0.15);
+
+  /* Text */
+  --text-primary: #e8f0ff;
+  --text-secondary: #8ab3ff;
+  --text-muted: #4a6080;
+  --text-on-accent: #ffffff;
+
+  /* Surfaces */
+  --surface-base: var(--navy-900);
+  --surface-raised: var(--navy-800);
+  --surface-overlay: var(--navy-700);
+
+  /* Borders */
+  --border-subtle: rgba(26, 111, 255, 0.12);
+  --border-default: rgba(26, 111, 255, 0.2);
+  --border-accent: rgba(0, 212, 255, 0.4);
+
+  /* Semantic */
+  --background: var(--navy-900);
+  --foreground: var(--text-primary);
+  --card: var(--navy-800);
+  --card-foreground: var(--text-primary);
+  --popover: var(--navy-700);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-blue);
+  --primary-foreground: var(--text-on-accent);
+  --secondary: var(--navy-700);
+  --secondary-foreground: var(--text-secondary);
+  --muted: var(--navy-700);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--accent-blue);
+  --accent-foreground: var(--text-on-accent);
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: var(--border-default);
+  --input: var(--navy-700);
+  --ring: var(--accent-blue);
+  --radius: 0.5rem;
+
+  /* Spacing */
+  --header-height: 3.5rem;
+
+  /* Animations */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* Glow effects (reduced for content panels — only used on marketing) */
+  --glow-blue: 0 0 24px rgba(26, 111, 255, 0.3), 0 0 8px rgba(26, 111, 255, 0.2);
+  --glow-cyan: 0 0 32px rgba(0, 212, 255, 0.25), 0 0 12px rgba(0, 212, 255, 0.15);
 }
 
+/* ── Tailwind v4 theme extension ─────────────────────────────────────────── */
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+
+  /* Brand-specific tokens as Tailwind classes */
+  --color-navy-950: var(--navy-950);
+  --color-navy-900: var(--navy-900);
+  --color-navy-800: var(--navy-800);
+  --color-navy-700: var(--navy-700);
+  --color-navy-600: var(--navy-600);
+  --color-navy-500: var(--navy-500);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-muted: var(--accent-muted);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+
+  /* Fonts — loaded via next/font in layout.tsx */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-geist-sans);
+
+  /* Border radius tokens */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-full: 9999px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base styles ─────────────────────────────────────────────────────────── */
+* {
+  border-color: var(--border-subtle);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Focus visible (don't override shadcn defaults) ─────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* ── Custom scrollbar (subtle brand treatment) ───────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--navy-800);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--navy-600);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-blue);
+}
+
+/* ── Monospace code/badge styling ────────────────────────────────────────── */
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono), "JetBrains Mono", "IBM Plex Mono", monospace;
+}
+
+/* ── Utility: glow effect (marketing only, not workspace) ────────────────── */
+.glow-blue {
+  box-shadow: var(--glow-blue);
+}
+.glow-cyan {
+  box-shadow: var(--glow-cyan);
+}
+.text-gradient {
+  background: linear-gradient(135deg, #ffffff 0%, var(--accent-cyan) 60%, var(--accent-blue) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Ambient background grid (marketing page only) ───────────────────────── */
+.bg-grid {
+  background-image: linear-gradient(rgba(26, 111, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 111, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
 }
