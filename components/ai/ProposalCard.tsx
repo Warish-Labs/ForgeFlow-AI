@@ -65,7 +65,7 @@ export function ProposalCard({ projectId, proposal, onHandled }: ProposalCardPro
       <div className="flex items-center justify-between border-b border-[#1b2338] pb-2">
         <div className="flex items-center gap-2">
           <HammerIcon className="h-4 w-4 text-[#38b6ff]" />
-          <span className="font-semibold text-[#f3f6fc]">Anvil Project Change Proposal</span>
+          <span className="font-semibold text-[#f3f6fc]">ForgeFlow Agent Proposal</span>
         </div>
         <span className="pill-tag text-[10px] uppercase font-mono">
           {proposal.type}

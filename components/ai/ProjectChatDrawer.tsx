@@ -29,7 +29,7 @@ export function ProjectChatDrawer({
     {
       id: "welcome",
       role: "assistant",
-      content: `Hello! I am **Anvil**, your AI agent for **${projectName}**.\n\nI can answer questions grounded in this project's stored state or propose technical stack and architecture updates.\n\nTry asking: *"change the stack from Next.js to React.js"* or *"how do I see the roadmap?"*`,
+      content: `Hello! I am **ForgeFlow Agent**, your AI agent for **${projectName}**.\n\nI can answer questions grounded in this project's stored state or propose technical stack and architecture updates.\n\nTry asking: *"change the stack from Next.js to React.js"* or *"how do I see the roadmap?"*`,
     },
   ]);
   const [input, setInput] = useState("");
@@ -83,7 +83,7 @@ export function ProjectChatDrawer({
       className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-[#1b2338] bg-[#070a14] shadow-2xl backdrop-blur-xl transition-all"
       role="dialog"
       aria-modal="true"
-      aria-label={`Anvil AI Agent for ${projectName}`}
+      aria-label={`ForgeFlow Agent for ${projectName}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#1b2338] px-4 py-3.5 bg-[#0d1220]">
@@ -93,7 +93,7 @@ export function ProjectChatDrawer({
           </div>
           <div>
             <h3 className="text-sm font-bold text-[#f3f6fc]">
-              Anvil AI Agent
+              ForgeFlow Agent
             </h3>
             <p className="text-[11px] text-[#9aa4b8] line-clamp-1">{projectName}</p>
           </div>
@@ -102,7 +102,7 @@ export function ProjectChatDrawer({
         <button
           onClick={onClose}
           className="rounded p-1.5 text-[#9aa4b8] hover:bg-[#131a2c] hover:text-[#f3f6fc]"
-          aria-label="Close Anvil chat drawer"
+          aria-label="Close ForgeFlow Agent chat drawer"
         >
           <XIcon className="h-4 w-4" />
         </button>
@@ -146,7 +146,7 @@ export function ProjectChatDrawer({
         {isSending && (
           <div className="flex items-center gap-2 text-[11px] text-[#9aa4b8] italic pl-9">
             <SparklesIcon className="h-3.5 w-3.5 animate-spin text-[#38b6ff]" />
-            Anvil is analyzing project state...
+            ForgeFlow Agent is analyzing project state...
           </div>
         )}
       </div>
@@ -158,7 +158,7 @@ export function ProjectChatDrawer({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask Anvil or request stack updates..."
+            placeholder="Ask ForgeFlow Agent or request stack updates..."
             className="flex-1 rounded border border-[#1b2338] bg-[#070a14] px-3 py-2 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
           />
           <Button

@@ -168,7 +168,7 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
 }
 
 /**
- * Anvil AI Chat Agent Action with strict boundary fallback and proposal generation
+ * ForgeFlow Agent AI Chat Action with strict boundary fallback and proposal generation
  */
 export async function sendChatMessageAction(
   projectId: string,
@@ -178,7 +178,7 @@ export async function sendChatMessageAction(
   if (!userId) {
     return {
       success: false,
-      error: { code: "UNAUTHORIZED", message: "You must be signed in to use Anvil Copilot" },
+      error: { code: "UNAUTHORIZED", message: "You must be signed in to use ForgeFlow Agent Copilot" },
     };
   }
 
@@ -260,7 +260,7 @@ export async function sendChatMessageAction(
               .join("\n");
         }
       } catch (err) {
-        console.warn("Tavily search skipped inside Anvil:", err);
+        console.warn("Tavily search skipped inside ForgeFlow Agent:", err);
       }
     }
 
@@ -272,7 +272,7 @@ export async function sendChatMessageAction(
       ? JSON.stringify(project.requirements)
       : "No requirements extracted yet.";
 
-    const systemPrompt = `You are Anvil, the in-app AI agent for ForgeFlow AI. You help with THIS project only — its requirements, tech stack, architecture, roadmap, and decision log — and with how to use ForgeFlow itself.
+    const systemPrompt = `You are ForgeFlow Agent, the in-app AI agent for ForgeFlow AI. You help with THIS project only — its requirements, tech stack, architecture, roadmap, and decision log — and with how to use ForgeFlow itself.
 
 === ACTIVE PROJECT CONTEXT ===
 - Project ID: ${project.id}
@@ -334,7 +334,7 @@ You must not answer anything outside this project scope — general knowledge, c
 
         assistantReply = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
       } catch (llmError: any) {
-        console.error("LLM Provider error in Anvil chat action:", llmError);
+        console.error("LLM Provider error in ForgeFlow Agent chat action:", llmError);
 
         // Check if user is asking to change stack in offline mode
         if (lowerQuery.includes("change") && lowerQuery.includes("stack")) {
@@ -406,7 +406,7 @@ export async function acceptProposalAction(
       await tx.decision.create({
         data: {
           projectId,
-          decision: `Anvil Proposal Accepted: ${proposal.summary}`,
+          decision: `ForgeFlow Agent Proposal Accepted: ${proposal.summary}`,
           reasoning: `User explicitly accepted proposal to update ${proposal.targetField}.`,
           affectedAreas: proposal.affectedAreas,
         },

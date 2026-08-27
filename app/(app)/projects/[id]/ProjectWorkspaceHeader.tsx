@@ -165,13 +165,13 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
                 <button
                   onClick={() => setIsChatOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded border border-[#1060ee] bg-[#0d1220] px-3.5 py-1.5 text-xs font-semibold text-[#38b6ff] hover:bg-[#1060ee] hover:text-white transition-all shadow-sm"
-                  title="Open Anvil AI Agent Chat Drawer"
+                  title="Open ForgeFlow Agent Chat Drawer"
                 >
                   <HammerIcon className="h-3.5 w-3.5" />
-                  Ask Anvil
+                  Ask Agent
                 </button>
                 <HelpTooltip
-                  title="Anvil AI Agent"
+                  title="ForgeFlow Agent"
                   text="WHAT: Interactive architecture agent trained on this project's exact state with Proposal Cards and Accept/Reject workflow."
                   side="bottom"
                 />
@@ -224,7 +224,7 @@ export function ProjectWorkspaceHeader({ project }: WorkspaceHeaderProps) {
         </div>
       </header>
 
-      {/* Anvil Chat Drawer */}
+      {/* ForgeFlow Agent Chat Drawer */}
       <ProjectChatDrawer
         projectId={project.id}
         projectName={project.name}

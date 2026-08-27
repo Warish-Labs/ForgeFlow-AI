@@ -49,7 +49,7 @@ export function ClarificationModal({
             </div>
             <div>
               <h3 className="text-sm font-bold text-[#f3f6fc]">
-                Anvil Clarification Required
+                ForgeFlow Agent Clarification Required
               </h3>
               <p className="text-[11px] text-[#9aa4b8]">Agent needs additional context for project state</p>
             </div>
@@ -112,7 +112,7 @@ export function ClarificationModal({
                 setCustomInput(e.target.value);
                 setSelectedOption("");
               }}
-              placeholder="Provide details to guide Anvil..."
+              placeholder="Provide details to guide ForgeFlow Agent..."
               rows={3}
               className="w-full rounded-xl border border-[#1b2338] bg-[#070a14] p-3 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
             />

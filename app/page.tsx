@@ -116,7 +116,7 @@ export default function LandingPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#2fe6b0] font-bold">•</span>
-                  <span><strong>Anvil Proposal Engine</strong>: Human-in-the-loop Accept/Reject confirmation before state updates</span>
+                  <span><strong>ForgeFlow Agent Proposal Engine</strong>: Human-in-the-loop Accept/Reject confirmation before state updates</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[#2fe6b0] font-bold">•</span>
@@ -239,7 +239,7 @@ export default function LandingPage() {
               },
               {
                 icon: HammerIcon,
-                title: "Anvil AI Agent",
+                title: "ForgeFlow Agent",
                 desc: "Interactive assistant with Proposal Cards and Accept/Reject confirmation.",
               },
               {
@@ -284,7 +284,7 @@ export default function LandingPage() {
             Ready to Architect Your Next Application?
           </h2>
           <p className="text-xs md:text-sm text-[#9aa4b8] max-w-xl mx-auto leading-relaxed">
-            Create your first architecture project blueprint in seconds with persistent state and Anvil AI agent assistance.
+            Create your first architecture project blueprint in seconds with persistent state and ForgeFlow Agent assistance.
           </p>
 
           <div className="pt-2">

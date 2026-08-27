@@ -145,6 +145,7 @@ export async function generateDocumentAction(
       doc = await prisma.document.update({
         where: { id: existingDoc.id },
         data: {
+          title: title || `${docType} Specification`,
           content,
           version: existingDoc.version + 1,
           status: "Generated",
@@ -154,8 +155,9 @@ export async function generateDocumentAction(
       doc = await prisma.document.create({
         data: {
           projectId,
+          ownerId: userId,
           type: docType,
-          title,
+          title: title || `${docType} Specification`,
           content,
           version: 1,
           status: "Generated",
