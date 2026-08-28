@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 
 export type AuditActionType =
   | "PROJECT_CREATED"
@@ -13,7 +14,7 @@ export async function logAuditEventAction(params: {
   userId: string;
   projectId?: string | null;
   action: AuditActionType;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }) {
   try {
     await prisma.auditLog.create({
@@ -21,7 +22,7 @@ export async function logAuditEventAction(params: {
         userId: params.userId,
         projectId: params.projectId || null,
         action: params.action,
-        metadata: params.metadata || {},
+        metadata: (params.metadata ?? {}) as Prisma.InputJsonValue,
       },
     });
   } catch (err) {

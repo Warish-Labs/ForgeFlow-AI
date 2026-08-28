@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-import { checkIsSuperAdminAction } from "@/lib/auth/admin";
 import { getUserProjectsAction } from "@/lib/actions/project";
 import { getUserQuotaUsageAction } from "@/lib/services/quota";
 import { DashboardClient } from "./DashboardClient";
@@ -14,14 +12,28 @@ export const metadata: Metadata = {
 // Force dynamic rendering since projects depend on auth session
 export const dynamic = "force-dynamic";
 
-interface DashboardPageProps {
-  searchParams: Promise<{ view?: string }>;
-}
-
 export default async function DashboardPage() {
-  const { userId } = await auth();
-  const projects = await getUserProjectsAction();
-  const usage = await getUserQuotaUsageAction(userId || "system");
+  let userId: string | null = null;
+
+  try {
+    const session = await auth();
+    userId = session.userId;
+  } catch (_) {}
+
+  // Gracefully fetch data — never let data errors bubble to error.tsx for users
+  let projects: Awaited<ReturnType<typeof getUserProjectsAction>> = [];
+  try {
+    projects = await getUserProjectsAction();
+  } catch (err) {
+    console.error("[DashboardPage] getUserProjectsAction failed:", err);
+  }
+
+  let usage: Awaited<ReturnType<typeof getUserQuotaUsageAction>> | undefined;
+  try {
+    usage = await getUserQuotaUsageAction(userId || "system");
+  } catch (err) {
+    console.error("[DashboardPage] getUserQuotaUsageAction failed:", err);
+  }
 
   return <DashboardClient initialProjects={projects} usage={usage} />;
 }

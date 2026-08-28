@@ -191,4 +191,51 @@ model Watchlist {
   @@index([createdAt])
 }
 
+// ─── Contact Messages (In-App Contact Form) ───────────────────────────────────
+
+model ContactMessage {
+  id        String         @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  isRead    Boolean        @default(false)
+  isDeleted Boolean        @default(false)
+  replies   ContactReply[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([isRead])
+  @@index([isDeleted])
+  @@index([createdAt])
+}
+
+model ContactReply {
+  id               String         @id @default(cuid())
+  contactMessageId String
+  contactMessage   ContactMessage @relation(fields: [contactMessageId], references: [id], onDelete: Cascade)
+  adminUserId      String
+  adminEmail       String
+  body             String
+  sentAt           DateTime       @default(now())
+
+  @@index([contactMessageId])
+}
+
+// ─── AI Model Pricing (versioned, for cost estimation) ───────────────────────
+
+model ModelPricing {
+  id                     String   @id @default(cuid())
+  model                  String
+  provider               String
+  inputPricePer1mTokens  Float    @default(0)
+  outputPricePer1mTokens Float    @default(0)
+  effectiveFrom          DateTime @default(now())
+  createdByAdminId       String
+  createdAt              DateTime @default(now())
+
+  @@index([model, effectiveFrom])
+  @@index([provider])
+}
+
 

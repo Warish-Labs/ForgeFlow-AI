@@ -1,9 +1,20 @@
 "use server";
+
+/**
+ * lib/actions/admin.ts
+ *
+ * All admin server actions — gated by requireAdmin() at the top of each function.
+ * Never relies on UI hiding for security — every function enforces admin check server-side.
+ */
+
 import { prisma } from "@/lib/db/prisma";
-import { checkIsSuperAdminAction } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/guard";
 import { ERROR_CODES, PLAN_LIMITS } from "@/lib/config/plans";
 import { logAuditEventAction } from "@/lib/services/audit";
 import { clerkClient } from "@clerk/nextjs/server";
+import { z } from "zod";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface AdminUserInfo {
   userId: string;
@@ -27,6 +38,8 @@ export interface AdminMetricsResult {
     requestsToday: number; requestsThisMonth: number;
     successRatePercent: number; failedRequests: number;
     totalWatchlistSubscribers: number;
+    totalDocuments: number;
+    totalContactMessages: number;
   };
   providers: { provider: string; totalTokens: number; totalRequests: number }[];
   operations: { operation: string; totalTokens: number; totalRequests: number }[];
@@ -49,33 +62,54 @@ export interface AdminMetricsResult {
   watchlistSubscribers: WatchlistSubscriberInfo[];
 }
 
+// ─── Overview Metrics ─────────────────────────────────────────────────────────
+
 export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
-  const { isAdmin, userId: adminUserId } = await checkIsSuperAdminAction();
-  if (!isAdmin) throw new Error(ERROR_CODES.UNAUTHORIZED_ADMIN);
+  await requireAdmin();
+
+  const { userId: adminUserId } = await requireAdmin();
   if (adminUserId) {
     await logAuditEventAction({ userId: adminUserId, action: "ADMIN_ACCESS", metadata: { page: "/admin" } });
   }
+
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const totalProjects = await prisma.project.count();
-  const totalLogs = await prisma.aiUsageLog.count();
-  const successfulLogs = await prisma.aiUsageLog.count({ where: { status: "success" } });
-  const failedRequests = await prisma.aiUsageLog.count({ where: { status: { in: ["error", "quota_exceeded"] } } });
-  const totalTokensAgg = await prisma.aiUsageLog.aggregate({ _sum: { totalTokens: true } });
-  const totalTokens = totalTokensAgg._sum.totalTokens || 0;
-  const todayAgg = await prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfToday } }, _sum: { totalTokens: true }, _count: { id: true } });
-  const monthAgg = await prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfMonth } }, _sum: { totalTokens: true }, _count: { id: true } });
+
+  const [
+    totalProjects, totalLogs, successfulLogs, failedRequests,
+    totalTokensAgg, todayAgg, monthAgg,
+    providerGroups, operationGroups, modelGroups,
+    userProjectsGroup, userUsageGroup,
+    totalDocuments, totalContactMessages,
+  ] = await Promise.all([
+    prisma.project.count(),
+    prisma.aiUsageLog.count(),
+    prisma.aiUsageLog.count({ where: { status: "success" } }),
+    prisma.aiUsageLog.count({ where: { status: { in: ["error", "quota_exceeded"] } } }),
+    prisma.aiUsageLog.aggregate({ _sum: { totalTokens: true } }),
+    prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfToday } }, _sum: { totalTokens: true }, _count: { id: true } }),
+    prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfMonth } }, _sum: { totalTokens: true }, _count: { id: true } }),
+    prisma.aiUsageLog.groupBy({ by: ["provider"], _sum: { totalTokens: true }, _count: { id: true } }),
+    prisma.aiUsageLog.groupBy({ by: ["operation"], _sum: { totalTokens: true }, _count: { id: true } }),
+    prisma.aiUsageLog.groupBy({ by: ["model", "provider"], _sum: { totalTokens: true }, _count: { id: true } }),
+    prisma.project.groupBy({ by: ["ownerId"], _count: { id: true } }),
+    prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
+    prisma.document.count(),
+    prisma.contactMessage.count({ where: { isDeleted: false } }),
+  ]);
+
   const successRatePercent = totalLogs > 0 ? Math.round((successfulLogs / totalLogs) * 100) : 100;
-  const providerGroups = await prisma.aiUsageLog.groupBy({ by: ["provider"], _sum: { totalTokens: true }, _count: { id: true } });
-  const operationGroups = await prisma.aiUsageLog.groupBy({ by: ["operation"], _sum: { totalTokens: true }, _count: { id: true } });
-  const modelGroups = await prisma.aiUsageLog.groupBy({ by: ["model", "provider"], _sum: { totalTokens: true }, _count: { id: true } });
-  const userProjectsGroup = await prisma.project.groupBy({ by: ["ownerId"], _count: { id: true } });
-  const userUsageGroup = await prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } });
-  const allUserIds = Array.from(new Set([...userProjectsGroup.map((u) => u.ownerId), ...userUsageGroup.map((u) => u.userId)])).filter((id): id is string => Boolean(id));
+  const totalTokens = totalTokensAgg._sum.totalTokens || 0;
+
+  const allUserIds = Array.from(new Set([
+    ...userProjectsGroup.map((u) => u.ownerId),
+    ...userUsageGroup.map((u) => u.userId),
+  ])).filter((id): id is string => Boolean(id));
+
   const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
-  
-  // Fetch Clerk user info only if valid IDs exist
+
+  // Fetch Clerk user info
   const clerkUsers: Record<string, AdminUserInfo> = {};
   if (allUserIds.length > 0) {
     try {
@@ -84,7 +118,8 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       for (const u of users) {
         clerkUsers[u.id] = {
           userId: u.id,
-          fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
+          fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") ||
+            u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
           email: u.emailAddresses[0]?.emailAddress || "",
           imageUrl: u.imageUrl || "",
         };
@@ -115,9 +150,13 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
     };
   });
 
-  const watchlistDelegate = (prisma as any).watchlist;
-  const watchlistEntries = watchlistDelegate ? await watchlistDelegate.findMany({ orderBy: { createdAt: "desc" } }) : [];
-  const watchlistSubscribers = watchlistEntries.map((w: any) => ({
+  // Watchlist (defensive — model exists now)
+  let watchlistEntries: Array<{ id: string; email: string; source: string; status: string; createdAt: Date }> = [];
+  try {
+    watchlistEntries = await prisma.watchlist.findMany({ orderBy: { createdAt: "desc" } });
+  } catch (_) {}
+
+  const watchlistSubscribers: WatchlistSubscriberInfo[] = watchlistEntries.map((w) => ({
     id: w.id,
     email: w.email,
     source: w.source,
@@ -126,13 +165,16 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
   }));
 
   const logs = await prisma.aiUsageLog.findMany({ take: 50, orderBy: { createdAt: "desc" } });
-  const recentLogs = logs.map((l) => ({ id: l.id, userId: l.userId, projectId: l.projectId, operation: l.operation, provider: l.provider, model: l.model, totalTokens: l.totalTokens, durationMs: l.durationMs, status: l.status, createdAt: new Date(l.createdAt).toLocaleString() }));
+  const recentLogs = logs.map((l) => ({
+    id: l.id, userId: l.userId, projectId: l.projectId, operation: l.operation,
+    provider: l.provider, model: l.model, totalTokens: l.totalTokens,
+    durationMs: l.durationMs, status: l.status,
+    createdAt: new Date(l.createdAt).toLocaleString(),
+  }));
+
   const auditEntries = await prisma.auditLog.findMany({ take: 30, orderBy: { createdAt: "desc" } });
   const auditLogs = auditEntries.map((a) => ({
-    id: a.id,
-    userId: a.userId,
-    projectId: a.projectId,
-    action: a.action,
+    id: a.id, userId: a.userId, projectId: a.projectId, action: a.action,
     metadata: JSON.parse(JSON.stringify(a.metadata || {})),
     createdAt: new Date(a.createdAt).toLocaleString(),
   }));
@@ -150,6 +192,8 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       successRatePercent,
       failedRequests,
       totalWatchlistSubscribers: watchlistEntries.length,
+      totalDocuments,
+      totalContactMessages,
     },
     providers: providerGroups.map((g) => ({ provider: g.provider, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
     operations: operationGroups.map((g) => ({ operation: g.operation, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
@@ -161,26 +205,232 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
   };
 }
 
+// ─── User Detail ──────────────────────────────────────────────────────────────
+
 export async function getAdminUserDetailsAction(targetUserId: string) {
-  const { isAdmin } = await checkIsSuperAdminAction();
-  if (!isAdmin) throw new Error(ERROR_CODES.UNAUTHORIZED_ADMIN);
-  const projects = await prisma.project.findMany({ where: { ownerId: targetUserId }, include: { _count: { select: { features: true, decisions: true, roadmapItems: true, documents: true } } }, orderBy: { updatedAt: "desc" } });
-  const aiLogs = await prisma.aiUsageLog.findMany({ where: { userId: targetUserId }, orderBy: { createdAt: "desc" }, take: 20 });
-  const errors = await prisma.aiUsageLog.findMany({ where: { userId: targetUserId, status: { in: ["error", "quota_exceeded"] } }, orderBy: { createdAt: "desc" }, take: 10 });
-  const totalTokensAgg = await prisma.aiUsageLog.aggregate({ where: { userId: targetUserId }, _sum: { promptTokens: true, completionTokens: true, totalTokens: true }, _count: { id: true } });
+  await requireAdmin();
+
+  const [projects, aiLogs, errors, totalTokensAgg] = await Promise.all([
+    prisma.project.findMany({
+      where: { ownerId: targetUserId },
+      include: { _count: { select: { features: true, decisions: true, roadmapItems: true, documents: true } } },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.aiUsageLog.findMany({ where: { userId: targetUserId }, orderBy: { createdAt: "desc" }, take: 20 }),
+    prisma.aiUsageLog.findMany({ where: { userId: targetUserId, status: { in: ["error", "quota_exceeded"] } }, orderBy: { createdAt: "desc" }, take: 10 }),
+    prisma.aiUsageLog.aggregate({ where: { userId: targetUserId }, _sum: { promptTokens: true, completionTokens: true, totalTokens: true }, _count: { id: true } }),
+  ]);
+
   let clerkUser: AdminUserInfo | null = null;
   try {
     const client = await clerkClient();
     const u = await client.users.getUser(targetUserId);
-    clerkUser = { userId: u.id, fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.emailAddresses[0]?.emailAddress || u.id, email: u.emailAddresses[0]?.emailAddress || "", imageUrl: u.imageUrl || "" };
+    clerkUser = {
+      userId: u.id,
+      fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.emailAddresses[0]?.emailAddress || u.id,
+      email: u.emailAddresses[0]?.emailAddress || "",
+      imageUrl: u.imageUrl || "",
+    };
   } catch (_) {}
-  return { userId: targetUserId, clerkUser, projects, aiLogs: aiLogs.map((l) => ({ ...l, createdAt: new Date(l.createdAt).toLocaleString() })), errors: errors.map((e) => ({ ...e, createdAt: new Date(e.createdAt).toLocaleString() })), stats: { promptTokens: totalTokensAgg._sum.promptTokens || 0, completionTokens: totalTokensAgg._sum.completionTokens || 0, totalTokens: totalTokensAgg._sum.totalTokens || 0, totalRequests: totalTokensAgg._count.id || 0 } };
+
+  return {
+    userId: targetUserId,
+    clerkUser,
+    projects,
+    aiLogs: aiLogs.map((l) => ({ ...l, createdAt: new Date(l.createdAt).toLocaleString() })),
+    errors: errors.map((e) => ({ ...e, createdAt: new Date(e.createdAt).toLocaleString() })),
+    stats: {
+      promptTokens: totalTokensAgg._sum.promptTokens || 0,
+      completionTokens: totalTokensAgg._sum.completionTokens || 0,
+      totalTokens: totalTokensAgg._sum.totalTokens || 0,
+      totalRequests: totalTokensAgg._count.id || 0,
+    },
+  };
 }
 
+// ─── Project Detail ───────────────────────────────────────────────────────────
+
 export async function getAdminProjectDetailsAction(projectId: string) {
-  const { isAdmin } = await checkIsSuperAdminAction();
-  if (!isAdmin) throw new Error(ERROR_CODES.UNAUTHORIZED_ADMIN);
-  const project = await prisma.project.findUnique({ where: { id: projectId }, include: { features: true, decisions: true, roadmapItems: true, documents: { select: { id: true, type: true, title: true, version: true, status: true, createdAt: true } }, aiUsage: { orderBy: { createdAt: "desc" }, take: 20 } } });
+  await requireAdmin();
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      features: true,
+      decisions: true,
+      roadmapItems: true,
+      documents: { select: { id: true, type: true, title: true, version: true, status: true, createdAt: true } },
+      aiUsage: { orderBy: { createdAt: "desc" }, take: 20 },
+    },
+  });
   if (!project) return null;
-  return { ...project, createdAt: new Date(project.createdAt).toLocaleString(), updatedAt: new Date(project.updatedAt).toLocaleString() };
+
+  return {
+    ...project,
+    createdAt: new Date(project.createdAt).toLocaleString(),
+    updatedAt: new Date(project.updatedAt).toLocaleString(),
+  };
+}
+
+// ─── Force Password Reset ────────────────────────────────────────────────────
+
+export async function forcePasswordResetAction(
+  targetUserId: string
+): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  try {
+    const client = await clerkClient();
+
+    // Reset all active sessions for the user
+    const sessions = await client.sessions.getSessionList({ userId: targetUserId });
+    await Promise.all(
+      sessions.data.map((s) => client.sessions.revokeSession(s.id))
+    );
+
+    // Write audit log
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: {
+        action: "FORCE_PASSWORD_RESET",
+        targetUserId,
+        performedBy: adminEmail,
+      },
+    });
+
+    return {
+      success: true,
+      message: `All sessions revoked for user ${targetUserId}. They must log in again and can reset their password via the sign-in page.`,
+    };
+  } catch (err) {
+    console.error("[forcePasswordResetAction] Error:", err);
+    return { success: false, message: "Failed to revoke user sessions. Check server logs." };
+  }
+}
+
+// ─── Toggle User Ban ──────────────────────────────────────────────────────────
+
+export async function toggleUserBanAction(
+  targetUserId: string,
+  ban: boolean
+): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  try {
+    const client = await clerkClient();
+    if (ban) {
+      await client.users.banUser(targetUserId);
+    } else {
+      await client.users.unbanUser(targetUserId);
+    }
+
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: {
+        action: ban ? "USER_BANNED" : "USER_UNBANNED",
+        targetUserId,
+        performedBy: adminEmail,
+      },
+    });
+
+    return { success: true, message: `User ${ban ? "banned" : "unbanned"} successfully.` };
+  } catch (err) {
+    console.error("[toggleUserBanAction] Error:", err);
+    return { success: false, message: "Failed to update user status." };
+  }
+}
+
+// ─── Get All Documents (admin view) ──────────────────────────────────────────
+
+export async function getAdminDocumentsAction() {
+  await requireAdmin();
+
+  const docs = await prisma.document.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: {
+      project: { select: { name: true, ownerId: true } },
+    },
+  });
+
+  return docs.map((d) => ({
+    id: d.id,
+    projectId: d.projectId,
+    projectName: d.project.name,
+    ownerId: d.project.ownerId,
+    type: d.type,
+    title: d.title,
+    status: d.status,
+    version: d.version,
+    contentPreview: d.content.substring(0, 200),
+    content: d.content,
+    createdAt: new Date(d.createdAt).toLocaleString(),
+  }));
+}
+
+// ─── Model Pricing ────────────────────────────────────────────────────────────
+
+const ModelPricingSchema = z.object({
+  model: z.string().min(1),
+  provider: z.string().min(1),
+  inputPricePer1mTokens: z.number().nonnegative().max(1000),
+  outputPricePer1mTokens: z.number().nonnegative().max(1000),
+});
+
+export async function getModelPricingAction() {
+  await requireAdmin();
+
+  const pricing = await prisma.modelPricing.findMany({
+    orderBy: { effectiveFrom: "desc" },
+  });
+
+  return pricing.map((p) => ({
+    id: p.id,
+    model: p.model,
+    provider: p.provider,
+    inputPricePer1mTokens: p.inputPricePer1mTokens,
+    outputPricePer1mTokens: p.outputPricePer1mTokens,
+    effectiveFrom: new Date(p.effectiveFrom).toLocaleString(),
+    createdAt: new Date(p.createdAt).toLocaleString(),
+  }));
+}
+
+export async function upsertModelPricingAction(input: {
+  model: string;
+  provider: string;
+  inputPricePer1mTokens: number;
+  outputPricePer1mTokens: number;
+}): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  const parsed = ModelPricingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, message: parsed.error.issues[0]?.message ?? "Validation failed" };
+  }
+
+  try {
+    await prisma.modelPricing.create({
+      data: {
+        ...parsed.data,
+        createdByAdminId: adminId,
+      },
+    });
+
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: {
+        action: "MODEL_PRICING_UPDATED",
+        ...parsed.data,
+        performedBy: adminEmail,
+      },
+    });
+
+    return { success: true, message: "Pricing updated successfully." };
+  } catch (err) {
+    console.error("[upsertModelPricingAction] Error:", err);
+    return { success: false, message: "Failed to save pricing." };
+  }
 }

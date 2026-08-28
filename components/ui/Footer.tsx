@@ -83,14 +83,12 @@ export function Footer() {
               </h4>
               <ul className="space-y-2">
                 <li>
-                  <a
-                    href="https://warishlabs.in/contact"
-                    target="_blank"
-                    rel="noreferrer"
+                  <Link
+                    href="/contact"
                     className="hover:text-[#38b6ff] transition-colors font-medium text-[#38b6ff]"
                   >
-                    Contact Us ↗
-                  </a>
+                    Contact Us
+                  </Link>
                 </li>
                 <li>
                   <Link href="/privacy" className="hover:text-[#38b6ff] transition-colors">
