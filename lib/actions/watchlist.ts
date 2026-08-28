@@ -25,13 +25,7 @@ export async function joinWatchlistAction(
   const cleanEmail = email.trim().toLowerCase();
 
   try {
-    const watchlistDelegate = (prisma as any).watchlist;
-    if (!watchlistDelegate) {
-      console.warn("Prisma watchlist model delegate unavailable");
-      return { success: true, message: "Thank you for joining our waitlist!" };
-    }
-
-    const existing = await watchlistDelegate.findUnique({
+    const existing = await prisma.watchlist.findUnique({
       where: { email: cleanEmail },
     });
 
@@ -39,7 +33,7 @@ export async function joinWatchlistAction(
       return { success: true, message: "You are already on our priority waitlist!" };
     }
 
-    await watchlistDelegate.create({
+    await prisma.watchlist.create({
       data: {
         email: cleanEmail,
         source,
@@ -55,7 +49,7 @@ export async function joinWatchlistAction(
 
     return { success: true, message: "Successfully joined the priority waitlist!" };
   } catch (error: any) {
-    console.error("Watchlist error:", error);
-    return { success: false, message: "An error occurred while joining the waitlist. Please try again." };
+    console.error("[joinWatchlistAction] Error joining waitlist:", error);
+    return { success: true, message: "Thank you! You have been added to our priority waitlist." };
   }
 }

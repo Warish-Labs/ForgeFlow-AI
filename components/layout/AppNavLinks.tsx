@@ -9,27 +9,28 @@ interface AppNavLinksProps {
 }
 
 /**
- * AppNavLinks — Client component so we can use usePathname() for live active state.
- * Active state is derived from the actual current route, never from stored/cached state.
+ * AppNavLinks — Server-gated, client-driven workspace navigation for admins.
+ * Non-admin users receive null (no switch buttons shown).
+ * Super-admins see both options with clear active route highlighting.
  */
 export function AppNavLinks({ isAdmin }: AppNavLinksProps) {
   const pathname = usePathname();
 
+  if (!isAdmin) return null;
+
   const isAdminPath = pathname.startsWith("/admin");
   const isDashboardPath =
     pathname.startsWith("/dashboard") || pathname.startsWith("/projects");
-
-  if (!isAdmin) return null;
 
   return (
     <div className="hidden sm:flex items-center gap-2">
       <Link
         href="/admin"
         aria-current={isAdminPath ? "page" : undefined}
-        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-mono font-bold transition-all shadow-sm ${
+        className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-mono font-bold transition-all shadow-sm ${
           isAdminPath
-            ? "border-[#1060ee] bg-[#1060ee] text-white"
-            : "border-[#1060ee] bg-[#1060ee]/20 text-[#38b6ff] hover:bg-[#1060ee] hover:text-white"
+            ? "border-[#1060ee] bg-[#1060ee] text-white shadow-blue-500/25"
+            : "border-[#1060ee]/40 bg-[#1060ee]/15 text-[#38b6ff] hover:bg-[#1060ee] hover:text-white"
         }`}
       >
         <ShieldAlertIcon className="h-3.5 w-3.5" />
@@ -39,9 +40,9 @@ export function AppNavLinks({ isAdmin }: AppNavLinksProps) {
       <Link
         href="/dashboard"
         aria-current={isDashboardPath ? "page" : undefined}
-        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-xs font-mono transition-all ${
+        className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-xs font-mono font-bold transition-all shadow-sm ${
           isDashboardPath
-            ? "border-[#38b6ff] bg-[#131a2c] text-[#f3f6fc]"
+            ? "border-[#1060ee] bg-[#1060ee] text-white shadow-blue-500/25"
             : "border-[#1b2338] bg-[#0d1220] text-[#9aa4b8] hover:text-[#f3f6fc] hover:border-[#38b6ff]"
         }`}
       >

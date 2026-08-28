@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { Logo } from "@/components/shared/Logo";
 import Link from "next/link";
-import { MailIcon, ExternalLinkIcon, ShieldCheckIcon, Building2Icon, MessageSquareIcon } from "lucide-react";
+import { ExternalLinkIcon, ShieldCheckIcon, Building2Icon, MessageSquareIcon } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Contact Us — ForgeFlow AI",
@@ -10,8 +10,6 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
-  const parentContactEmail =
-    process.env.NEXT_PUBLIC_PARENT_CONTACT_EMAIL || "warishdeveloper@gmail.com";
   const parentSiteUrl =
     process.env.NEXT_PUBLIC_PARENT_SITE_URL || "https://warishlabs.in";
 
@@ -32,9 +30,9 @@ export default function ContactPage() {
         </div>
       </header>
 
-      {/* Main Content: Section A (Form) & Section B (Official Info) */}
+      {/* Main Content: Section A (Form) & Section B (Brand Details) */}
       <main className="max-w-[1100px] mx-auto px-6 py-12 md:py-20 flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-        {/* Section B: Official Contact Info & Brand Details (Visible on page load) */}
+        {/* Section B: Official Info & Brand Details */}
         <div className="space-y-6">
           <div className="space-y-3">
             <span className="pill-tag uppercase">CONTACT SUPPORT & SALES</span>
@@ -43,29 +41,12 @@ export default function ContactPage() {
             </h1>
             <p className="text-sm text-[#9aa4b8] leading-relaxed">
               Have questions about platform integration, enterprise token limits, or feature requests?
-              Send us a message or reach out through our official channels.
+              Send us a message using the form or connect through our parent organization.
             </p>
           </div>
 
           <div className="space-y-4 pt-2">
-            {/* 1. Official Support Email mailto link */}
-            <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
-              <div className="h-10 w-10 rounded-xl bg-[#1060ee]/20 border border-[#1060ee]/40 flex items-center justify-center text-[#38b6ff] shrink-0">
-                <MailIcon className="h-5 w-5" />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-xs font-bold text-[#f3f6fc]">Official Support Email</h4>
-                <a
-                  href={`mailto:${parentContactEmail}`}
-                  className="text-xs font-mono text-[#38b6ff] hover:underline flex items-center gap-1"
-                >
-                  {parentContactEmail}
-                  <ExternalLinkIcon className="h-3 w-3" />
-                </a>
-              </div>
-            </div>
-
-            {/* 2. Parent Company Site Link */}
+            {/* 1. Parent Company Site Link */}
             <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
               <div className="h-10 w-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
                 <Building2Icon className="h-5 w-5" />
@@ -83,7 +64,7 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* 3. Security & Delivery Guarantee */}
+            {/* 2. Security & Delivery Guarantee */}
             <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
               <div className="h-10 w-10 rounded-xl bg-[#2fe6b0]/20 border border-[#2fe6b0]/40 flex items-center justify-center text-[#2fe6b0] shrink-0">
                 <ShieldCheckIcon className="h-5 w-5" />
@@ -94,7 +75,7 @@ export default function ContactPage() {
               </div>
             </div>
 
-            {/* 4. In-App Admin Dispatch */}
+            {/* 3. In-App Admin Dispatch */}
             <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
               <div className="h-10 w-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
                 <MessageSquareIcon className="h-5 w-5" />

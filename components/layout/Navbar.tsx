@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth, UserButton } from "@clerk/nextjs";
-import { LayoutDashboardIcon, ArrowRightIcon, ZapIcon, SparklesIcon } from "lucide-react";
+import { LayoutDashboardIcon, ArrowRightIcon, ZapIcon } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { PremiumComingSoonModal } from "@/components/ui/PremiumComingSoonModal";
 
@@ -29,14 +29,14 @@ export function Navbar() {
             <a href="/#how-it-works" className="hover:text-[#38b6ff] transition-colors hidden md:block">
               How It Works
             </a>
-            <a
-              href="https://warishlabs.in/contact"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-[#38b6ff] transition-colors text-[#38b6ff] hidden md:block"
+            
+            {/* Standard unhighlighted Contact link pointing to ForgeFlow contact form */}
+            <Link
+              href="/contact"
+              className="hover:text-[#38b6ff] transition-colors hidden md:block"
             >
-              Contact ↗
-            </a>
+              Contact Us
+            </Link>
 
             {/* Premium Banner Button */}
             <button
