@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { submitContactMessageAction } from "@/lib/actions/contact";
 import { SendIcon, Loader2Icon, CheckCircle2Icon, AlertCircleIcon } from "lucide-react";
-import { Turnstile } from "@marsidev/react-turnstile";
+import { TurnstileWidget } from "@/components/shared/TurnstileWidget";
 
 export function ContactForm() {
   const [name, setName] = useState("");
@@ -15,13 +15,17 @@ export function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<{ success: boolean; message: string } | null>(null);
 
-  // Site key from env or Cloudflare testing sitekey (0x4AAAAAAAAAAAAAAAAAAAAAAAAA always passes)
-  const siteKey =
-    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAAAAAAAAAAAAAAAAAAAA";
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name || !email || !subject || !message) return;
+
+    if (!token) {
+      setStatus({
+        success: false,
+        message: "Please complete the security bot verification widget before submitting.",
+      });
+      return;
+    }
 
     setIsSubmitting(true);
     setStatus(null);
@@ -31,7 +35,7 @@ export function ContactForm() {
       email,
       subject,
       message,
-      turnstileToken: token || "dev-bypass-token",
+      turnstileToken: token,
     });
 
     setStatus(res);
@@ -122,12 +126,8 @@ export function ContactForm() {
         </div>
 
         {/* Cloudflare Turnstile bot widget */}
-        <div className="py-1">
-          <Turnstile
-            siteKey={siteKey}
-            onSuccess={(t) => setToken(t)}
-            options={{ theme: "dark" }}
-          />
+        <div className="py-2">
+          <TurnstileWidget onSuccess={(t) => setToken(t)} />
         </div>
 
         <button

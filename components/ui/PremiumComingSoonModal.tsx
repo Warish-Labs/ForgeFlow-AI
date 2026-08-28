@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { SparklesIcon, ZapIcon, CheckCircle2Icon, ShieldCheckIcon, XIcon, Loader2Icon } from "lucide-react";
+import { SparklesIcon, ZapIcon, CheckCircle2Icon, ShieldCheckIcon, XIcon, Loader2Icon, AlertCircleIcon } from "lucide-react";
 import { joinWatchlistAction } from "@/lib/actions/watchlist";
+import { TurnstileWidget } from "@/components/shared/TurnstileWidget";
 
 interface PremiumComingSoonModalProps {
   isOpen: boolean;
@@ -19,30 +20,41 @@ export function PremiumComingSoonModal({
   description = "You've reached a free tier boundary or discovered a premium capability. Upgrade to unlock full scale autonomous software architecture tools.",
 }: PremiumComingSoonModalProps) {
   const [email, setEmail] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !email.includes("@")) return;
 
+    if (!turnstileToken) {
+      setErrorMsg("Please complete security bot verification before submitting.");
+      return;
+    }
+
     setIsSubmitting(true);
+    setErrorMsg("");
+
     try {
-      const res = await joinWatchlistAction(email, "premium_modal");
+      const res = await joinWatchlistAction(email, "premium_modal", turnstileToken);
       if (res.success) {
         setIsSubscribed(true);
         setStatusMsg(res.message);
         setTimeout(() => {
           setIsSubscribed(false);
           setEmail("");
+          setTurnstileToken("");
           onClose();
         }, 2500);
       } else {
-        setStatusMsg(res.message);
+        setErrorMsg(res.message);
       }
     } catch (err) {
       console.error(err);
+      setErrorMsg("Failed to join waitlist. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -101,29 +113,41 @@ export function PremiumComingSoonModal({
             </ul>
           </div>
 
-          {/* Priority Waitlist Form */}
+          {errorMsg && (
+            <div className="mb-3 p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-xs text-rose-400 flex items-center gap-2">
+              <AlertCircleIcon className="h-4 w-4 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Priority Waitlist Form with Turnstile widget */}
           {!isSubscribed ? (
             <form onSubmit={handleSubscribe} className="space-y-3">
               <label className="text-[11px] font-medium text-[#9aa4b8] block">
                 Get early priority notification & launch access:
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="email"
-                  placeholder="developer@warishlabs.in"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1 rounded-xl border border-[#1b2338] bg-[#070a14] px-3.5 py-2 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="rounded-xl bg-[#1060ee] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all shadow-lg shrink-0 disabled:opacity-50 inline-flex items-center gap-1.5"
-                >
-                  {isSubmitting && <Loader2Icon className="h-3.5 w-3.5 animate-spin" />}
-                  Join Waitlist
-                </button>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    placeholder="developer@warishlabs.in"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="flex-1 rounded-xl border border-[#1b2338] bg-[#070a14] px-3.5 py-2 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="rounded-xl bg-[#1060ee] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all shadow-lg shrink-0 disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    {isSubmitting && <Loader2Icon className="h-3.5 w-3.5 animate-spin" />}
+                    Join Waitlist
+                  </button>
+                </div>
+                <div className="py-1">
+                  <TurnstileWidget onSuccess={(t) => setTurnstileToken(t)} size="compact" />
+                </div>
               </div>
             </form>
           ) : (

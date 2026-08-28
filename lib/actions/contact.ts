@@ -30,32 +30,7 @@ const ContactFormSchema = z.object({
 
 type ContactFormInput = z.infer<typeof ContactFormSchema>;
 
-// ─── Turnstile verification ────────────────────────────────────────────────────
-
-async function verifyTurnstile(token: string, ip?: string): Promise<boolean> {
-  const secretKey = process.env.TURNSTILE_SECRET_KEY;
-  if (!secretKey) {
-    // If no secret key configured, skip verification in dev
-    if (process.env.NODE_ENV === "development") return true;
-    return false;
-  }
-
-  try {
-    const body = new URLSearchParams();
-    body.append("secret", secretKey);
-    body.append("response", token);
-    if (ip) body.append("remoteip", ip);
-
-    const res = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      { method: "POST", body }
-    );
-    const data = (await res.json()) as { success: boolean };
-    return data.success;
-  } catch {
-    return false;
-  }
-}
+import { verifyTurnstileToken } from "@/lib/services/turnstile";
 
 // ─── Public: Submit Contact Form ──────────────────────────────────────────────
 
@@ -71,7 +46,7 @@ export async function submitContactMessageAction(
   const { name, email, subject, message, turnstileToken } = parsed.data;
 
   // Bot check
-  const isHuman = await verifyTurnstile(turnstileToken);
+  const isHuman = await verifyTurnstileToken(turnstileToken);
   if (!isHuman) {
     return { success: false, message: "Bot verification failed. Please try again." };
   }

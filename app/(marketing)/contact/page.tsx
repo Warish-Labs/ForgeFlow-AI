@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ContactForm } from "@/components/marketing/ContactForm";
 import { Logo } from "@/components/shared/Logo";
 import Link from "next/link";
-import { MailIcon, MessageSquareIcon, ShieldCheckIcon } from "lucide-react";
+import { MailIcon, ExternalLinkIcon, ShieldCheckIcon, Building2Icon, MessageSquareIcon } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Contact Us — ForgeFlow AI",
@@ -10,6 +10,11 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
+  const parentContactEmail =
+    process.env.NEXT_PUBLIC_PARENT_CONTACT_EMAIL || "warishdeveloper@gmail.com";
+  const parentSiteUrl =
+    process.env.NEXT_PUBLIC_PARENT_SITE_URL || "https://warishlabs.in";
+
   return (
     <div className="min-h-screen bg-[#070a14] text-[#f3f6fc] flex flex-col justify-between">
       {/* Header */}
@@ -27,9 +32,9 @@ export default function ContactPage() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content: Section A (Form) & Section B (Official Info) */}
       <main className="max-w-[1100px] mx-auto px-6 py-12 md:py-20 flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-        {/* Info Column */}
+        {/* Section B: Official Contact Info & Brand Details (Visible on page load) */}
         <div className="space-y-6">
           <div className="space-y-3">
             <span className="pill-tag uppercase">CONTACT SUPPORT & SALES</span>
@@ -38,21 +43,47 @@ export default function ContactPage() {
             </h1>
             <p className="text-sm text-[#9aa4b8] leading-relaxed">
               Have questions about platform integration, enterprise token limits, or feature requests?
-              Send us a message and our team will get back to you within 24 hours.
+              Send us a message or reach out through our official channels.
             </p>
           </div>
 
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 pt-2">
+            {/* 1. Official Support Email mailto link */}
             <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
               <div className="h-10 w-10 rounded-xl bg-[#1060ee]/20 border border-[#1060ee]/40 flex items-center justify-center text-[#38b6ff] shrink-0">
                 <MailIcon className="h-5 w-5" />
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-[#f3f6fc]">Direct Email Support</h4>
-                <p className="text-xs text-[#9aa4b8]">warishdeveloper@gmail.com</p>
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-[#f3f6fc]">Official Support Email</h4>
+                <a
+                  href={`mailto:${parentContactEmail}`}
+                  className="text-xs font-mono text-[#38b6ff] hover:underline flex items-center gap-1"
+                >
+                  {parentContactEmail}
+                  <ExternalLinkIcon className="h-3 w-3" />
+                </a>
               </div>
             </div>
 
+            {/* 2. Parent Company Site Link */}
+            <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
+              <div className="h-10 w-10 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 shrink-0">
+                <Building2Icon className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-[#f3f6fc]">Parent Engineering Organization</h4>
+                <a
+                  href={parentSiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-mono text-[#38b6ff] hover:underline flex items-center gap-1"
+                >
+                  WarishLabs ↗
+                </a>
+              </div>
+            </div>
+
+            {/* 3. Security & Delivery Guarantee */}
             <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
               <div className="h-10 w-10 rounded-xl bg-[#2fe6b0]/20 border border-[#2fe6b0]/40 flex items-center justify-center text-[#2fe6b0] shrink-0">
                 <ShieldCheckIcon className="h-5 w-5" />
@@ -63,6 +94,7 @@ export default function ContactPage() {
               </div>
             </div>
 
+            {/* 4. In-App Admin Dispatch */}
             <div className="flex items-start gap-4 p-4 rounded-2xl border border-[#1b2338] bg-[#0d1220]">
               <div className="h-10 w-10 rounded-xl bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shrink-0">
                 <MessageSquareIcon className="h-5 w-5" />
@@ -75,13 +107,13 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* Contact Form Column */}
+        {/* Section A: Contact Form Column */}
         <ContactForm />
       </main>
 
       {/* Minimal Footer */}
       <footer className="border-t border-[#1b2338] py-6 text-center text-xs text-[#5c6980]">
-        ForgeFlow AI · Built by <a href="https://github.com/mdwarishansari" target="_blank" rel="noopener noreferrer" className="text-[#38b6ff] hover:underline">mdwarishansari</a>
+        ForgeFlow AI · Built by <a href={parentSiteUrl} target="_blank" rel="noopener noreferrer" className="text-[#38b6ff] hover:underline">WarishLabs</a>
       </footer>
     </div>
   );
