@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
 import Script from "next/script";
 import "./globals.css";
 
@@ -18,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://forgeflow-ai.vercel.app";
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://forgeflow.warishlabs.in";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -86,7 +85,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={{ theme: dark }}>
+    <ClerkProvider>
       <html
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}

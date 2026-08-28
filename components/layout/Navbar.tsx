@@ -38,19 +38,12 @@ export function Navbar() {
               Contact ↗
             </a>
 
-            {/* Premium Banner & Watchlist Button */}
+            {/* Premium Banner Button */}
             <button
               onClick={() => setIsPremiumOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#1060ee]/40 bg-[#1060ee]/15 px-3 py-1 text-[11px] font-semibold text-[#38b6ff] hover:bg-[#1060ee]/30 transition-all shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3.5 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-400/20 transition-all shadow-sm"
             >
-              <SparklesIcon className="h-3 w-3 text-[#38b6ff]" />
-              Join Watchlist
-            </button>
-            <button
-              onClick={() => setIsPremiumOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-400/20 transition-all shadow-sm"
-            >
-              <ZapIcon className="h-3 w-3" />
+              <ZapIcon className="h-3.5 w-3.5" />
               Buy Premium
             </button>
 

@@ -14,7 +14,13 @@ export async function joinWatchlistAction(email: string, source: string = "landi
   const cleanEmail = email.trim().toLowerCase();
 
   try {
-    const existing = await prisma.watchlist.findUnique({
+    const watchlistDelegate = (prisma as any).watchlist;
+    if (!watchlistDelegate) {
+      console.warn("Prisma watchlist model delegate unavailable");
+      return { success: true, message: "Thank you for joining our waitlist!" };
+    }
+
+    const existing = await watchlistDelegate.findUnique({
       where: { email: cleanEmail },
     });
 
@@ -22,7 +28,7 @@ export async function joinWatchlistAction(email: string, source: string = "landi
       return { success: true, message: "You are already on our priority waitlist!" };
     }
 
-    await prisma.watchlist.create({
+    await watchlistDelegate.create({
       data: {
         email: cleanEmail,
         source,

@@ -16,18 +16,26 @@ export function Footer() {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             {/* Brand Column */}
             <div className="space-y-4 md:col-span-2">
-              <div className="flex items-center gap-2.5">
+              <Link href="/" className="flex items-center gap-3 group">
                 <Image
-                  src="/Logo/forgeflow-logo-flat.svg"
+                  src="/Logo/forgeflow-logo-gradient.png"
                   alt="ForgeFlow AI Logo"
-                  width={28}
-                  height={28}
-                  className="h-7 w-7"
+                  width={36}
+                  height={36}
+                  className="h-9 w-9 shrink-0 object-contain drop-shadow-[0_0_12px_rgba(56,182,255,0.4)] group-hover:scale-105 transition-transform"
                 />
-                <span className="font-mono text-base font-bold text-[#f3f6fc]">
-                  FORGEFLOW<span className="text-[#38b6ff]">.AI</span>
-                </span>
-              </div>
+                <div className="flex flex-col">
+                  <span className="font-mono text-lg font-bold text-[#f3f6fc] tracking-tight">
+                    FORGEFLOW<span className="text-[#38b6ff]">.AI</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-[#38b6ff]/80 tracking-widest uppercase -mt-1">
+                    ENGINEERING BLUEPRINT ENGINE
+                  </span>
+                </div>
+              </Link>
+              <p className="text-xs text-[#9aa4b8] max-w-sm leading-relaxed">
+                Turn one-line software ideas into structured, reasoned, implementation-ready blueprints with persistent project state and intelligent architecture synthesis.
+              </p>
             </div>
 
             {/* Platform Navigation */}
@@ -117,10 +125,9 @@ export function Footer() {
               </a>
               . All rights reserved.
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[#5c6980]">v1.0.0</span>
-              <span className="h-1 w-1 rounded-full bg-[#1b2338]" />
-              <span className="text-[#5c6980]">Next.js 16 · Prisma · Groq</span>
+            <div className="flex items-center gap-2 text-[#9aa4b8]">
+              <span className="h-2 w-2 rounded-full bg-[#2fe6b0] animate-pulse" />
+              <span className="font-mono text-[10px]">System Operational</span>
             </div>
           </div>
         </div>

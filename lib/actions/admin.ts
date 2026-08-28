@@ -115,8 +115,9 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
     };
   });
 
-  const watchlistEntries = await prisma.watchlist.findMany({ orderBy: { createdAt: "desc" } });
-  const watchlistSubscribers = watchlistEntries.map((w) => ({
+  const watchlistDelegate = (prisma as any).watchlist;
+  const watchlistEntries = watchlistDelegate ? await watchlistDelegate.findMany({ orderBy: { createdAt: "desc" } }) : [];
+  const watchlistSubscribers = watchlistEntries.map((w: any) => ({
     id: w.id,
     email: w.email,
     source: w.source,

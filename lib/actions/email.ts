@@ -46,11 +46,14 @@ export async function sendAdminCustomEmailAction({
   let recipients: string[] = [];
 
   if (recipientType === "watchlist") {
-    const watchlist = await prisma.watchlist.findMany({
-      where: { status: "active" },
-      select: { email: true },
-    });
-    recipients = watchlist.map((w) => w.email);
+    const watchlistDelegate = (prisma as any).watchlist;
+    const watchlist = watchlistDelegate
+      ? await watchlistDelegate.findMany({
+          where: { status: "active" },
+          select: { email: true },
+        })
+      : [];
+    recipients = watchlist.map((w: any) => w.email);
   } else if (recipientType === "tenants") {
     try {
       const client = await clerkClient();

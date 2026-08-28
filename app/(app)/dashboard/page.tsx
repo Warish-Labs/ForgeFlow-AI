@@ -18,16 +18,8 @@ interface DashboardPageProps {
   searchParams: Promise<{ view?: string }>;
 }
 
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function DashboardPage() {
   const { userId } = await auth();
-  const resolvedParams = await searchParams;
-  const { isAdmin } = await checkIsSuperAdminAction();
-
-  // If logged in as Super Admin and not explicitly requesting portfolio view, redirect to Super Admin Panel
-  if (isAdmin && resolvedParams?.view !== "portfolio") {
-    redirect("/admin");
-  }
-
   const projects = await getUserProjectsAction();
   const usage = await getUserQuotaUsageAction(userId || "system");
 

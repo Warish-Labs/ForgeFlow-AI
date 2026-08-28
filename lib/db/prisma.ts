@@ -4,6 +4,11 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Reset cached instance if a new model delegate (e.g. watchlist) was added to schema
+if (globalForPrisma.prisma && !("watchlist" in globalForPrisma.prisma)) {
+  globalForPrisma.prisma = undefined;
+}
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
