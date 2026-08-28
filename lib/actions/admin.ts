@@ -12,12 +12,21 @@ export interface AdminUserInfo {
   imageUrl: string;
 }
 
+export interface WatchlistSubscriberInfo {
+  id: string;
+  email: string;
+  source: string;
+  status: string;
+  createdAt: string;
+}
+
 export interface AdminMetricsResult {
   overview: {
     totalUsers: number; totalProjects: number; totalTokens: number;
     tokensToday: number; tokensThisMonth: number; totalRequests: number;
     requestsToday: number; requestsThisMonth: number;
     successRatePercent: number; failedRequests: number;
+    totalWatchlistSubscribers: number;
   };
   providers: { provider: string; totalTokens: number; totalRequests: number }[];
   operations: { operation: string; totalTokens: number; totalRequests: number }[];
@@ -37,6 +46,7 @@ export interface AdminMetricsResult {
     id: string; userId: string; projectId: string | null;
     action: string; metadata: unknown; createdAt: string;
   }[];
+  watchlistSubscribers: WatchlistSubscriberInfo[];
 }
 
 export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
@@ -62,23 +72,25 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
   const modelGroups = await prisma.aiUsageLog.groupBy({ by: ["model", "provider"], _sum: { totalTokens: true }, _count: { id: true } });
   const userProjectsGroup = await prisma.project.groupBy({ by: ["ownerId"], _count: { id: true } });
   const userUsageGroup = await prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } });
-  const allUserIds = Array.from(new Set([...userProjectsGroup.map((u) => u.ownerId), ...userUsageGroup.map((u) => u.userId)]));
+  const allUserIds = Array.from(new Set([...userProjectsGroup.map((u) => u.ownerId), ...userUsageGroup.map((u) => u.userId)])).filter((id): id is string => Boolean(id));
   const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
   
-  // Fetch Clerk user info
+  // Fetch Clerk user info only if valid IDs exist
   const clerkUsers: Record<string, AdminUserInfo> = {};
-  try {
-    const client = await clerkClient();
-    const { data: users } = await client.users.getUserList({ userId: allUserIds, limit: 100 });
-    for (const u of users) {
-      clerkUsers[u.id] = {
-        userId: u.id,
-        fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
-        email: u.emailAddresses[0]?.emailAddress || "",
-        imageUrl: u.imageUrl || "",
-      };
-    }
-  } catch (_) {}
+  if (allUserIds.length > 0) {
+    try {
+      const client = await clerkClient();
+      const { data: users } = await client.users.getUserList({ userId: allUserIds, limit: 100 });
+      for (const u of users) {
+        clerkUsers[u.id] = {
+          userId: u.id,
+          fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
+          email: u.emailAddresses[0]?.emailAddress || "",
+          imageUrl: u.imageUrl || "",
+        };
+      }
+    } catch (_) {}
+  }
 
   const userTable = allUserIds.map((uId) => {
     const proj = userProjectsGroup.find((p) => p.ownerId === uId);
@@ -103,17 +115,48 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
     };
   });
 
+  const watchlistEntries = await prisma.watchlist.findMany({ orderBy: { createdAt: "desc" } });
+  const watchlistSubscribers = watchlistEntries.map((w) => ({
+    id: w.id,
+    email: w.email,
+    source: w.source,
+    status: w.status,
+    createdAt: new Date(w.createdAt).toLocaleString(),
+  }));
+
   const logs = await prisma.aiUsageLog.findMany({ take: 50, orderBy: { createdAt: "desc" } });
   const recentLogs = logs.map((l) => ({ id: l.id, userId: l.userId, projectId: l.projectId, operation: l.operation, provider: l.provider, model: l.model, totalTokens: l.totalTokens, durationMs: l.durationMs, status: l.status, createdAt: new Date(l.createdAt).toLocaleString() }));
   const auditEntries = await prisma.auditLog.findMany({ take: 30, orderBy: { createdAt: "desc" } });
-  const auditLogs = auditEntries.map((a) => ({ id: a.id, userId: a.userId, projectId: a.projectId, action: a.action, metadata: a.metadata, createdAt: new Date(a.createdAt).toLocaleString() }));
+  const auditLogs = auditEntries.map((a) => ({
+    id: a.id,
+    userId: a.userId,
+    projectId: a.projectId,
+    action: a.action,
+    metadata: JSON.parse(JSON.stringify(a.metadata || {})),
+    createdAt: new Date(a.createdAt).toLocaleString(),
+  }));
 
   return {
-    overview: { totalUsers: allUserIds.length, totalProjects, totalTokens, tokensToday: todayAgg._sum.totalTokens || 0, tokensThisMonth: monthAgg._sum.totalTokens || 0, totalRequests: totalLogs, requestsToday: todayAgg._count.id || 0, requestsThisMonth: monthAgg._count.id || 0, successRatePercent, failedRequests },
+    overview: {
+      totalUsers: allUserIds.length,
+      totalProjects,
+      totalTokens,
+      tokensToday: todayAgg._sum.totalTokens || 0,
+      tokensThisMonth: monthAgg._sum.totalTokens || 0,
+      totalRequests: totalLogs,
+      requestsToday: todayAgg._count.id || 0,
+      requestsThisMonth: monthAgg._count.id || 0,
+      successRatePercent,
+      failedRequests,
+      totalWatchlistSubscribers: watchlistEntries.length,
+    },
     providers: providerGroups.map((g) => ({ provider: g.provider, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
     operations: operationGroups.map((g) => ({ operation: g.operation, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
     models: modelGroups.map((g) => ({ model: g.model || "default", provider: g.provider, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
-    userTable, recentLogs, auditLogs,
+    userTable,
+    recentLogs,
+    auditLogs,
+    watchlistSubscribers,
   };
 }
 

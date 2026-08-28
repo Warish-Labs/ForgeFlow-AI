@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth, UserButton } from "@clerk/nextjs";
-import { LayoutDashboardIcon, ArrowRightIcon, ZapIcon } from "lucide-react";
+import { LayoutDashboardIcon, ArrowRightIcon, ZapIcon, SparklesIcon } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { PremiumComingSoonModal } from "@/components/ui/PremiumComingSoonModal";
 
@@ -38,10 +38,17 @@ export function Navbar() {
               Contact ↗
             </a>
 
-            {/* Premium Banner Button */}
+            {/* Premium Banner & Watchlist Button */}
             <button
               onClick={() => setIsPremiumOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-[11px] font-semibold text-amber-400 hover:bg-amber-400/20 transition-all shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#1060ee]/40 bg-[#1060ee]/15 px-3 py-1 text-[11px] font-semibold text-[#38b6ff] hover:bg-[#1060ee]/30 transition-all shadow-sm"
+            >
+              <SparklesIcon className="h-3 w-3 text-[#38b6ff]" />
+              Join Watchlist
+            </button>
+            <button
+              onClick={() => setIsPremiumOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-400/20 transition-all shadow-sm"
             >
               <ZapIcon className="h-3 w-3" />
               Buy Premium

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { SparklesIcon, ZapIcon, CheckCircle2Icon, ShieldCheckIcon, XIcon } from "lucide-react";
+import { SparklesIcon, ZapIcon, CheckCircle2Icon, ShieldCheckIcon, XIcon, Loader2Icon } from "lucide-react";
+import { joinWatchlistAction } from "@/lib/actions/watchlist";
 
 interface PremiumComingSoonModalProps {
   isOpen: boolean;
@@ -18,17 +19,33 @@ export function PremiumComingSoonModal({
   description = "You've reached a free tier boundary or discovered a premium capability. Upgrade to unlock full scale autonomous software architecture tools.",
 }: PremiumComingSoonModalProps) {
   const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
 
-  function handleSubscribe(e: React.FormEvent) {
+  async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !email.includes("@")) return;
-    setIsSubscribed(true);
-    setTimeout(() => {
-      setIsSubscribed(false);
-      setEmail("");
-      onClose();
-    }, 2500);
+
+    setIsSubmitting(true);
+    try {
+      const res = await joinWatchlistAction(email, "premium_modal");
+      if (res.success) {
+        setIsSubscribed(true);
+        setStatusMsg(res.message);
+        setTimeout(() => {
+          setIsSubscribed(false);
+          setEmail("");
+          onClose();
+        }, 2500);
+      } else {
+        setStatusMsg(res.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -101,8 +118,10 @@ export function PremiumComingSoonModal({
                 />
                 <button
                   type="submit"
-                  className="rounded-xl bg-[#1060ee] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all shadow-lg shrink-0"
+                  disabled={isSubmitting}
+                  className="rounded-xl bg-[#1060ee] px-4 py-2 text-xs font-semibold text-white hover:bg-[#0a2a9c] transition-all shadow-lg shrink-0 disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
+                  {isSubmitting && <Loader2Icon className="h-3.5 w-3.5 animate-spin" />}
                   Join Waitlist
                 </button>
               </div>
@@ -110,7 +129,7 @@ export function PremiumComingSoonModal({
           ) : (
             <div className="rounded-xl bg-[#2fe6b0]/10 border border-[#2fe6b0]/40 p-3 text-center text-xs text-[#2fe6b0] font-semibold flex items-center justify-center gap-2">
               <ShieldCheckIcon className="h-4 w-4" />
-              <span>✓ You're on the priority notification list!</span>
+              <span>{statusMsg || "✓ You're on the priority notification list!"}</span>
             </div>
           )}
         </Dialog.Content>

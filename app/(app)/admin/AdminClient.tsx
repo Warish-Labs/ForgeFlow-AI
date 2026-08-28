@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AdminMetricsResult, getAdminUserDetailsAction, getAdminProjectDetailsAction } from "@/lib/actions/admin";
+import { sendAdminCustomEmailAction } from "@/lib/actions/email";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   ShieldAlertIcon,
@@ -20,6 +21,12 @@ import {
   BarChart3Icon,
   LayersIcon,
   ClockIcon,
+  MailIcon,
+  SendIcon,
+  CodeIcon,
+  Loader2Icon,
+  AlertCircleIcon,
+  UserCheckIcon,
 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 
@@ -31,8 +38,20 @@ interface AdminClientProps {
 export function AdminClient({ adminEmail, initialMetrics }: AdminClientProps) {
   const [metrics] = useState<AdminMetricsResult>(initialMetrics);
   const [userSearch, setUserSearch] = useState("");
+  const [watchlistSearch, setWatchlistSearch] = useState("");
   const [logFilter, setLogFilter] = useState("ALL");
   const [auditFilter, setAuditFilter] = useState("ALL");
+
+  // Email broadcast studio state
+  const [recipientType, setRecipientType] = useState<"watchlist" | "tenants" | "custom">("watchlist");
+  const [customEmails, setCustomEmails] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailHtml, setEmailHtml] = useState(
+    `<div style="font-family: sans-serif; background-color: #070a14; color: #f3f6fc; padding: 32px; border-radius: 12px;">\n  <h2 style="color: #38b6ff;">ForgeFlow AI Update</h2>\n  <p>Hello,</p>\n  <p>We are thrilled to announce new updates to ForgeFlow AI platform!</p>\n  <hr style="border: 0; border-top: 1px solid #1b2338; margin: 20px 0;" />\n  <p style="font-size: 12px; color: #9aa4b8;">Sent via ForgeFlow AI Super Admin Governance</p>\n</div>`
+  );
+  const [emailTab, setEmailTab] = useState<"code" | "preview">("code");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   // Selected drill-down states
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -44,7 +63,12 @@ export function AdminClient({ adminEmail, initialMetrics }: AdminClientProps) {
   const [isLoadingProject, setIsLoadingProject] = useState(false);
 
   const filteredUsers = metrics.userTable.filter((u) =>
-    u.userId.toLowerCase().includes(userSearch.toLowerCase())
+    u.userId.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.email.toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const filteredWatchlist = (metrics.watchlistSubscribers || []).filter((w) =>
+    w.email.toLowerCase().includes(watchlistSearch.toLowerCase())
   );
 
   const filteredLogs = metrics.recentLogs.filter((l) => {
@@ -56,6 +80,32 @@ export function AdminClient({ adminEmail, initialMetrics }: AdminClientProps) {
     if (auditFilter === "ALL") return true;
     return a.action === auditFilter;
   });
+
+  async function handleSendCustomEmail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!emailSubject.trim() || !emailHtml.trim()) return;
+
+    setIsSendingEmail(true);
+    setEmailStatus(null);
+
+    try {
+      const res = await sendAdminCustomEmailAction({
+        recipientType,
+        customEmails,
+        subject: emailSubject,
+        htmlContent: emailHtml,
+      });
+
+      setEmailStatus(res);
+      if (res.success) {
+        setEmailSubject("");
+      }
+    } catch (err: any) {
+      setEmailStatus({ success: false, message: err.message || "Failed to send email broadcast." });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  }
 
   async function handleOpenUserModal(userId: string) {
     setSelectedUserId(userId);
@@ -132,6 +182,17 @@ export function AdminClient({ adminEmail, initialMetrics }: AdminClientProps) {
           <Card className="border-[#1b2338] bg-[#0d1220]">
             <CardContent className="p-4 space-y-1">
               <div className="flex items-center justify-between text-[#9aa4b8]">
+                <span className="text-[11px] font-mono">Watchlist</span>
+                <MailIcon className="h-4 w-4 text-amber-400" />
+              </div>
+              <div className="text-xl font-bold text-amber-400">{metrics.overview.totalWatchlistSubscribers}</div>
+              <p className="text-[10px] text-[#5c6980]">Priority waitlist</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-[#1b2338] bg-[#0d1220]">
+            <CardContent className="p-4 space-y-1">
+              <div className="flex items-center justify-between text-[#9aa4b8]">
                 <span className="text-[11px] font-mono">Total Projects</span>
                 <FolderGit2Icon className="h-4 w-4 text-[#1060ee]" />
               </div>
@@ -188,6 +249,197 @@ export function AdminClient({ adminEmail, initialMetrics }: AdminClientProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* ── Custom HTML Email Broadcast Studio (Resend Integration) ─────────────── */}
+        <Card className="border border-[#1060ee]/40 bg-[#0d1220] shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 h-40 w-80 bg-[#1060ee]/10 blur-[90px] pointer-events-none" />
+          <CardHeader className="p-6 pb-3 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="pill-tag uppercase border-[#1060ee] text-[#38b6ff] bg-[#1060ee]/20">
+                  RESEND EMAIL ENGINE
+                </span>
+              </div>
+              <CardTitle className="text-lg font-bold text-[#f3f6fc] flex items-center gap-2">
+                <MailIcon className="h-5 w-5 text-[#38b6ff]" /> Custom HTML Email Broadcast Studio
+              </CardTitle>
+              <p className="text-xs text-[#9aa4b8]">
+                Send customized HTML newsletters and announcements to Watchlist subscribers, registered tenants, or custom addresses.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#070a14] border border-[#1b2338] p-1 rounded-xl shrink-0">
+              <button
+                type="button"
+                onClick={() => setEmailTab("code")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                  emailTab === "code" ? "bg-[#1060ee] text-white font-bold" : "text-[#9aa4b8] hover:text-[#f3f6fc]"
+                }`}
+              >
+                <CodeIcon className="h-3.5 w-3.5" /> HTML Code
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmailTab("preview")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all ${
+                  emailTab === "preview" ? "bg-[#1060ee] text-white font-bold" : "text-[#9aa4b8] hover:text-[#f3f6fc]"
+                }`}
+              >
+                <EyeIcon className="h-3.5 w-3.5" /> Live Preview
+              </button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6 pt-3 space-y-5">
+            {emailStatus && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs font-medium flex items-center justify-between gap-3 ${
+                  emailStatus.success
+                    ? "bg-[#2fe6b0]/10 border-[#2fe6b0]/40 text-[#2fe6b0]"
+                    : "bg-rose-500/10 border-rose-500/40 text-rose-400"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {emailStatus.success ? (
+                    <CheckCircle2Icon className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <AlertCircleIcon className="h-4 w-4 shrink-0" />
+                  )}
+                  <span>{emailStatus.message}</span>
+                </div>
+                <button onClick={() => setEmailStatus(null)} className="text-current opacity-70 hover:opacity-100">
+                  <XIcon className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            <form onSubmit={handleSendCustomEmail} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Audience Radio Selector */}
+                <div className="space-y-2">
+                  <label className="text-xs font-mono text-[#9aa4b8] block">Target Recipient Audience:</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#1b2338] bg-[#070a14] cursor-pointer hover:border-[#38b6ff]/50 transition-all">
+                      <input
+                        type="radio"
+                        name="recipientType"
+                        value="watchlist"
+                        checked={recipientType === "watchlist"}
+                        onChange={() => setRecipientType("watchlist")}
+                        className="accent-[#1060ee]"
+                      />
+                      <div>
+                        <div className="text-xs font-bold text-[#f3f6fc]">Watchlist Subscribers ({metrics.overview.totalWatchlistSubscribers})</div>
+                        <div className="text-[10px] text-[#5c6980]">Priority waitlist signups from landing page</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#1b2338] bg-[#070a14] cursor-pointer hover:border-[#38b6ff]/50 transition-all">
+                      <input
+                        type="radio"
+                        name="recipientType"
+                        value="tenants"
+                        checked={recipientType === "tenants"}
+                        onChange={() => setRecipientType("tenants")}
+                        className="accent-[#1060ee]"
+                      />
+                      <div>
+                        <div className="text-xs font-bold text-[#f3f6fc]">Registered Tenants ({metrics.overview.totalUsers})</div>
+                        <div className="text-[10px] text-[#5c6980]">All Clerk registered platform user accounts</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-[#1b2338] bg-[#070a14] cursor-pointer hover:border-[#38b6ff]/50 transition-all">
+                      <input
+                        type="radio"
+                        name="recipientType"
+                        value="custom"
+                        checked={recipientType === "custom"}
+                        onChange={() => setRecipientType("custom")}
+                        className="accent-[#1060ee]"
+                      />
+                      <div>
+                        <div className="text-xs font-bold text-[#f3f6fc]">Custom Email Address(es)</div>
+                        <div className="text-[10px] text-[#5c6980]">Send to specific manual recipient list</div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Email Subject & Custom Input */}
+                <div className="space-y-4 md:col-span-2">
+                  {recipientType === "custom" && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-[#9aa4b8]">Custom Email Recipients (comma-separated):</label>
+                      <input
+                        type="text"
+                        placeholder="user1@domain.com, user2@domain.com"
+                        value={customEmails}
+                        onChange={(e) => setCustomEmails(e.target.value)}
+                        className="w-full rounded-xl border border-[#1b2338] bg-[#070a14] px-4 py-2 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
+                        required={recipientType === "custom"}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-mono text-[#9aa4b8]">Email Subject Line:</label>
+                    <input
+                      type="text"
+                      placeholder="🚀 Exciting Updates from ForgeFlow AI Team"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                      className="w-full rounded-xl border border-[#1b2338] bg-[#070a14] px-4 py-2.5 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none font-medium"
+                      required
+                    />
+                  </div>
+
+                  {emailTab === "code" ? (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-[#9aa4b8]">HTML Code Body (Resend Email Format):</label>
+                      <textarea
+                        rows={7}
+                        value={emailHtml}
+                        onChange={(e) => setEmailHtml(e.target.value)}
+                        className="w-full rounded-xl border border-[#1b2338] bg-[#070a14] p-3 text-xs font-mono text-[#2fe6b0] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none leading-relaxed"
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-mono text-[#9aa4b8]">Live Email HTML Render Preview:</label>
+                      <div className="rounded-xl border border-[#1b2338] bg-white p-4 max-h-[220px] overflow-y-auto shadow-inner text-black">
+                        <div dangerouslySetInnerHTML={{ __html: emailHtml }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-[#1b2338]/60">
+                <span className="text-[11px] font-mono text-[#5c6980]">
+                  Resend Service: <strong className="text-[#38b6ff]">Active</strong> · Sender Domain: <strong className="text-[#38b6ff]">onboarding@resend.dev</strong>
+                </span>
+
+                <button
+                  type="submit"
+                  disabled={isSendingEmail || !emailSubject.trim() || !emailHtml.trim()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#1060ee] px-6 py-2.5 text-xs font-bold text-white hover:bg-[#0a2a9c] transition-all shadow-xl shadow-blue-500/20 disabled:opacity-50"
+                >
+                  {isSendingEmail ? (
+                    <>
+                      <Loader2Icon className="h-4 w-4 animate-spin" /> Dispatching Broadcast...
+                    </>
+                  ) : (
+                    <>
+                      <SendIcon className="h-4 w-4" /> Broadcast Email via Resend
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Tenant Telemetry Directory Table & Analytics Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -281,6 +533,60 @@ export function AdminClient({ adminEmail, initialMetrics }: AdminClientProps) {
 
           {/* AI Providers & Operation Breakdown */}
           <div className="space-y-6 lg:col-span-1">
+            {/* Watchlist Subscribers Directory Card */}
+            <Card className="border-[#1b2338] bg-[#0d1220]">
+              <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-bold text-[#f3f6fc] flex items-center gap-2">
+                    <MailIcon className="h-4 w-4 text-amber-400" /> Watchlist Subscribers ({metrics.overview.totalWatchlistSubscribers})
+                  </CardTitle>
+                  <p className="text-[10px] text-[#9aa4b8]">
+                    Priority launch & waitlist signups
+                  </p>
+                </div>
+                <div className="relative w-28">
+                  <SearchIcon className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[#5c6980]" />
+                  <input
+                    type="text"
+                    placeholder="Filter..."
+                    value={watchlistSearch}
+                    onChange={(e) => setWatchlistSearch(e.target.value)}
+                    className="w-full rounded-lg border border-[#1b2338] bg-[#070a14] pl-6 pr-1.5 py-0.5 text-[10px] text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-1 max-h-[220px] overflow-y-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[#1b2338] text-[#5c6980] font-mono text-[10px]">
+                      <th className="pb-1.5 font-normal">Subscriber Email</th>
+                      <th className="pb-1.5 font-normal">Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1b2338]/60 text-[#f3f6fc]">
+                    {filteredWatchlist.length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className="py-3 text-center text-[#5c6980] text-[11px]">
+                          No watchlist subscribers yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredWatchlist.map((w) => (
+                        <tr key={w.id} className="hover:bg-[#131a2c]/50">
+                          <td className="py-1.5 font-mono text-[11px] text-[#38b6ff] truncate max-w-[140px]">
+                            {w.email}
+                          </td>
+                          <td className="py-1.5 font-mono text-[9px] text-[#9aa4b8]">
+                            {w.createdAt}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+
             <Card className="border-[#1b2338] bg-[#0d1220]">
               <CardHeader className="p-4 pb-2">
                 <CardTitle className="text-sm font-bold text-[#f3f6fc] flex items-center gap-2">

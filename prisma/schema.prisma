@@ -178,3 +178,17 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// ─── Watchlist & Newsletter Subscribers ─────────────────────────────────────
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("landing_modal")
+  status    String   @default("active") // "active" | "unsubscribed"
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+
