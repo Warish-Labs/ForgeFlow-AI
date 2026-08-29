@@ -25,5 +25,23 @@ export const requirementSynthesisSchema = z.object({
     .min(1, "Must extract at least 1 feature"),
 });
 
+export const questionTypeSchema = z.enum(["single_select", "multi_select", "free_text", "yes_no"]);
+
+export const questionItemSchema = z.object({
+  id: z.string(),
+  type: questionTypeSchema,
+  prompt: z.string(),
+  options: z.array(z.string()).optional(),
+  reasoning: z.string(),
+});
+
+export const askUserPayloadSchema = z.object({
+  questions: z.array(questionItemSchema).min(1),
+});
+
+export type QuestionType = z.infer<typeof questionTypeSchema>;
+export type QuestionItem = z.infer<typeof questionItemSchema>;
+export type AskUserPayload = z.infer<typeof askUserPayloadSchema>;
+
 export type ExtractedFeature = z.infer<typeof extractedFeatureSchema>;
 export type RequirementSynthesisResult = z.infer<typeof requirementSynthesisSchema>;

@@ -3,10 +3,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import { createSynthesisGraph } from "@/lib/ai/graph";
 import { getLlmClient } from "@/lib/ai/provider";
 import { searchTavily } from "@/lib/tools/tavily";
-import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
+import { checkUserAiQuotaAction, checkUserTavilyQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 
 export type ActionResult<T> =
@@ -56,10 +57,16 @@ function isOutofScopeQuery(query: string): boolean {
   return false;
 }
 
+import { Command } from "@langchain/langgraph";
+import { QuestionItem } from "@/lib/validations/ai";
+
 /**
- * Run AI Requirement Synthesis on a project
+ * Run AI Requirement Synthesis on a project with Agentic Ask-User Tool Interrupt support
  */
-export async function analyzeProjectAction(projectId: string): Promise<ActionResult<{ success: boolean }>> {
+export async function analyzeProjectAction(
+  projectId: string,
+  userAnswers?: Record<string, any>
+): Promise<ActionResult<{ success: boolean; status?: string; questions?: QuestionItem[] }>> {
   const { userId } = await auth();
   if (!userId) {
     return {
@@ -92,11 +99,39 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
     }
 
     const graph = createSynthesisGraph();
-    const stateResult = await graph.invoke({
-      projectId: project.id,
-      projectName: project.name,
-      ideaText: project.ideaText,
-    });
+    const stateResult = await graph.invoke(
+      {
+        projectId: project.id,
+        projectName: project.name,
+        ideaText: project.ideaText,
+        userAnswers: userAnswers || {},
+      },
+      { configurable: { thread_id: projectId } }
+    );
+
+    // Check if graph execution interrupted for user questions
+    if (
+      stateResult.status === "NEEDS_INPUT" ||
+      (stateResult as any).__interrupt__?.length > 0
+    ) {
+      const interruptData = (stateResult as any).__interrupt__?.[0]?.value || stateResult;
+      const questions: QuestionItem[] = interruptData.questions || [];
+
+      // Save open questions in DB to persist state across refresh
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { openQuestions: questions as any },
+      });
+
+      return {
+        success: true,
+        data: {
+          success: true,
+          status: "NEEDS_INPUT",
+          questions,
+        },
+      };
+    }
 
     const synthesis = stateResult.result;
     if (!synthesis) {
@@ -116,6 +151,7 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
             functional: synthesis.functionalRequirements,
             nonFunctional: synthesis.nonFunctionalRequirements,
           },
+          openQuestions: Prisma.DbNull,
           status: "ARCHITECTURE",
         },
       });
@@ -170,13 +206,138 @@ export async function analyzeProjectAction(projectId: string): Promise<ActionRes
     });
 
     revalidatePath(`/projects/${projectId}`);
-    return { success: true, data: { success: true } };
+    return { success: true, data: { success: true, status: "COMPLETED" } };
   } catch (error: any) {
     console.error("Error in analyzeProjectAction:", error);
     return {
       success: false,
       error: { code: "INTERNAL_ERROR", message: "Failed to analyze project. Please try again." },
     };
+  }
+}
+
+/**
+ * Resume AI Synthesis when user answers agent's questions
+ */
+export async function resumeProjectSynthesisAction(
+  projectId: string,
+  answers: Record<string, any>
+): Promise<ActionResult<{ success: boolean; status?: string; questions?: QuestionItem[] }>> {
+  const { userId } = await auth();
+  if (!userId) {
+    return {
+      success: false,
+      error: { code: "UNAUTHORIZED", message: "You must be signed in to resume synthesis" },
+    };
+  }
+
+  try {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, ownerId: userId },
+    });
+
+    if (!project) {
+      return {
+        success: false,
+        error: { code: "NOT_FOUND", message: "Project not found or access denied" },
+      };
+    }
+
+    const graph = createSynthesisGraph();
+    let stateResult: any;
+
+    try {
+      stateResult = await graph.invoke(
+        new Command({ resume: answers }),
+        { configurable: { thread_id: projectId } }
+      );
+    } catch (_) {
+      // Fallback: re-invoke graph directly with user answers in state
+      return await analyzeProjectAction(projectId, answers);
+    }
+
+    if (
+      stateResult.status === "NEEDS_INPUT" ||
+      stateResult.__interrupt__?.length > 0
+    ) {
+      const interruptData = stateResult.__interrupt__?.[0]?.value || stateResult;
+      const questions: QuestionItem[] = interruptData.questions || [];
+
+      await prisma.project.update({
+        where: { id: projectId },
+        data: { openQuestions: questions as any },
+      });
+
+      return {
+        success: true,
+        data: {
+          success: true,
+          status: "NEEDS_INPUT",
+          questions,
+        },
+      };
+    }
+
+    const synthesis = stateResult.result;
+    if (!synthesis) {
+      return await analyzeProjectAction(projectId, answers);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.project.update({
+        where: { id: projectId },
+        data: {
+          problemStatement: synthesis.problemStatement,
+          techStack: synthesis.suggestedStack,
+          requirements: {
+            functional: synthesis.functionalRequirements,
+            nonFunctional: synthesis.nonFunctionalRequirements,
+          },
+          openQuestions: Prisma.DbNull,
+          status: "ARCHITECTURE",
+        },
+      });
+
+      await tx.feature.deleteMany({ where: { projectId } });
+      await tx.decision.deleteMany({ where: { projectId } });
+
+      if (synthesis.suggestedStack.length > 0) {
+        await tx.feature.createMany({
+          data: [
+            {
+              projectId,
+              title: "Core System Infrastructure & Authentication",
+              description: `Initial architecture stack setup with ${synthesis.suggestedStack.slice(0, 3).join(", ")}.`,
+              phase: "MVP",
+              status: "planned",
+            },
+            {
+              projectId,
+              title: "Primary Relational Data Schema",
+              description: "Database models, indexes, and single-tenant ownership constraints.",
+              phase: "MVP",
+              status: "planned",
+            },
+          ],
+        });
+
+        await tx.decision.create({
+          data: {
+            projectId,
+            decision: `Selected initial core stack: ${synthesis.suggestedStack.join(", ")}`,
+            reasoning: `Applied user technical choices: ${Object.entries(answers).map(([k, v]) => `${k}:${v}`).join(", ")}`,
+            alternative: "Monolithic framework",
+            affectedAreas: ["Architecture", "Database", "Security"],
+          },
+        });
+      }
+    });
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, data: { success: true, status: "COMPLETED" } };
+  } catch (error: any) {
+    console.error("Error in resumeProjectSynthesisAction:", error);
+    return await analyzeProjectAction(projectId, answers);
   }
 }
 
@@ -272,17 +433,31 @@ export async function sendChatMessageAction(
       lowerQuery.includes("benchmark");
 
     if (shouldSearchWeb && process.env.TAVILY_API_KEY) {
-      try {
-        const tavilyRes = await searchTavily(`${project.name} ${userMessageContent}`);
-        if (tavilyRes.results && tavilyRes.results.length > 0) {
-          tavilyContext = `\n\n### Live Web Research Findings:\n` +
-            tavilyRes.results
-              .slice(0, 2)
-              .map((r) => `- **[${r.title}](${r.url})**: ${r.content}`)
-              .join("\n");
+      const tavilyCheck = await checkUserTavilyQuotaAction(userId);
+      if (tavilyCheck.allowed) {
+        try {
+          const tavilyRes = await searchTavily(`${project.name} ${userMessageContent}`);
+          if (tavilyRes.results && tavilyRes.results.length > 0) {
+            tavilyContext = `\n\n### Live Web Research Findings:\n` +
+              tavilyRes.results
+                .slice(0, 2)
+                .map((r) => `- **[${r.title}](${r.url})**: ${r.content}`)
+                .join("\n");
+          }
+          await logAiUsageAction({
+            userId,
+            projectId,
+            operation: "web_search",
+            provider: "tavily",
+            model: "tavily-basic",
+            totalTokens: 1,
+            status: "success",
+          });
+        } catch (err) {
+          console.warn("Tavily search skipped inside ForgeFlow Agent:", err);
         }
-      } catch (err) {
-        console.warn("Tavily search skipped inside ForgeFlow Agent:", err);
+      } else {
+        tavilyContext = `\n\n*(Note: Live Tavily web search was skipped because your monthly web research credit limit was reached. Tavily credits reset on the 1st of next month.)*`;
       }
     }
 

@@ -1,4 +1,4 @@
-import { Annotation, StateGraph } from "@langchain/langgraph";
+import { Annotation, StateGraph, interrupt, MemorySaver } from "@langchain/langgraph";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import {
   getLlmClient,
@@ -8,6 +8,7 @@ import {
 import {
   requirementSynthesisSchema,
   RequirementSynthesisResult,
+  QuestionItem,
 } from "@/lib/validations/ai";
 import { SystemArchitectureSynthesisResult } from "@/lib/validations/architecture";
 import { RoadmapSynthesisResult } from "@/lib/validations/roadmap";
@@ -28,6 +29,14 @@ export const ForgeFlowGraphState = Annotation.Root({
     reducer: (x, y) => y ?? x,
     default: () => "",
   }),
+  userAnswers: Annotation<Record<string, any>>({
+    reducer: (x, y) => ({ ...(x || {}), ...(y || {}) }),
+    default: () => ({}),
+  }),
+  pendingQuestions: Annotation<QuestionItem[] | null>({
+    reducer: (x, y) => y ?? x,
+    default: () => null,
+  }),
   result: Annotation<RequirementSynthesisResult | null>({
     reducer: (x, y) => y ?? x,
     default: () => null,
@@ -46,24 +55,65 @@ export const ForgeFlowGraphState = Annotation.Root({
   }),
   status: Annotation<string>({
     reducer: (x, y) => y ?? x,
-    default: () => "IDLE",
+    default: () => "IDLE", // "IDLE" | "NEEDS_INPUT" | "COMPLETED" | "ERROR"
   }),
 });
 
 export type ForgeFlowState = typeof ForgeFlowGraphState.State;
 
 /**
-  * Requirement Synthesis Node
-  * Converts raw software vision text into structured requirements, tech stack recommendations, and feature list.
-  */
+ * Requirement Synthesis Node with Agentic Ask-User Tool Decision Reasoning
+ */
 export async function requirementSynthesisNode(state: ForgeFlowState) {
-  const { ideaText, projectName } = state;
-
+  const { ideaText, projectName, userAnswers = {} } = state;
   const llm = getLlmClient();
 
-  // If no live LLM client available (no API key in dev), use realistic mock generator
+  const answersCount = Object.keys(userAnswers).length;
+
+  // Offline / Mock Mode Logic when LLM API keys are not supplied
   if (!llm) {
+    const lowerIdea = ideaText.toLowerCase();
+    const hasPrisma = lowerIdea.includes("prisma");
+    const hasDbChoice =
+      lowerIdea.includes("postgres") ||
+      lowerIdea.includes("mysql") ||
+      lowerIdea.includes("sqlite") ||
+      Boolean(userAnswers.db_choice);
+
+    if (hasPrisma && !hasDbChoice && answersCount === 0) {
+      const mockQuestions: QuestionItem[] = [
+        {
+          id: "db_choice",
+          type: "single_select",
+          prompt: "You specified Prisma as your ORM, but no database engine was selected. Which database should this project use?",
+          options: ["PostgreSQL", "MySQL", "SQLite", "Let AI decide (PostgreSQL default)"],
+          reasoning: "Prisma ORM requires a relational database driver configuration. PostgreSQL is recommended for production Next.js apps.",
+        },
+      ];
+
+      // Invoke LangGraph interrupt pattern
+      const resumedAnswers = interrupt({
+        status: "NEEDS_INPUT",
+        questions: mockQuestions,
+      }) as Record<string, any> | undefined;
+
+      const effectiveAnswers = resumedAnswers || userAnswers;
+      const dbChoice = effectiveAnswers.db_choice || "PostgreSQL";
+      const mockOutput = generateMockRequirementSynthesis(ideaText, projectName);
+      mockOutput.suggestedStack = Array.from(new Set([...mockOutput.suggestedStack, dbChoice]));
+
+      return {
+        result: mockOutput,
+        userAnswers: effectiveAnswers,
+        status: "COMPLETED",
+        error: null,
+      };
+    }
+
     const mockOutput = generateMockRequirementSynthesis(ideaText, projectName);
+    if (userAnswers.db_choice) {
+      mockOutput.suggestedStack = Array.from(new Set([...mockOutput.suggestedStack, userAnswers.db_choice]));
+    }
     return {
       result: mockOutput,
       status: "COMPLETED",
@@ -71,12 +121,34 @@ export async function requirementSynthesisNode(state: ForgeFlowState) {
     };
   }
 
-  const systemPrompt = `You are an elite Software Architect and Systems Analyst.
-Your task is to analyze a raw software vision description and produce a structured JSON implementation blueprint.
+  // Live LLM Mode
+  const systemPrompt = `You are an elite Software Architect and Systems Analyst executing an interactive requirement synthesis pipeline.
 
-Return ONLY a valid JSON object matching this EXACT schema format with no extra markdown text or wrapping:
+You are NOT restricted to what the user provided — the user's input is a starting point, not a ceiling.
+Think through the actual technical implications of the given stack & vision:
+- If the user specifies an ORM like "Prisma" or "Drizzle" without a database engine, ask which database to use (e.g. PostgreSQL, MySQL, SQLite).
+- If the user requests real-time features without specifying a WebSocket or PubSub layer, ask about real-time engine choice.
+- If authentication or database is ambiguous, identify open decision points.
+
+INSTRUCTIONS:
+1. If there are genuine, critical technical decisions that are missing or ambiguous, and user Answers have NOT yet been provided to resolve them, return a JSON object asking questions:
 {
-  "problemStatement": "Clear concise 1-2 sentence description of the core problem being solved",
+  "status": "NEEDS_INPUT",
+  "questions": [
+    {
+      "id": "db_choice",
+      "type": "single_select",
+      "prompt": "Clear question for the user",
+      "options": ["Option 1", "Option 2"],
+      "reasoning": "Clear technical rationale explaining WHY the AI agent is asking this question"
+    }
+  ]
+}
+
+2. If the user's input is ALREADY complete enough with clear stack details, OR if user answers have been provided, return the finalized blueprint JSON matching status "COMPLETED":
+{
+  "status": "COMPLETED",
+  "problemStatement": "Clear concise 1-2 sentence problem description",
   "suggestedStack": ["Tech1", "Tech2", "Tech3"],
   "functionalRequirements": ["Requirement 1", "Requirement 2"],
   "nonFunctionalRequirements": ["NFR 1", "NFR 2"],
@@ -84,15 +156,18 @@ Return ONLY a valid JSON object matching this EXACT schema format with no extra 
     {
       "title": "Feature Name",
       "description": "Feature description",
-      "phase": "MVP" | "PHASE_2" | "PHASE_3",
-      "priority": "HIGH" | "MEDIUM" | "LOW"
+      "phase": "MVP",
+      "priority": "HIGH"
     }
   ]
 }`;
 
   const userPrompt = `Project Name: ${projectName}
 Vision Description:
-${ideaText}`;
+${ideaText}
+
+User Answers Previously Provided:
+${JSON.stringify(userAnswers)}`;
 
   try {
     const response = await llm.invoke([
@@ -104,9 +179,42 @@ ${ideaText}`;
     const cleaned = cleanJsonText(rawText);
     const parsed = JSON.parse(cleaned);
 
-    // Validate through Zod schema guard
-    const validated = requirementSynthesisSchema.parse(parsed);
+    if (
+      parsed.status === "NEEDS_INPUT" &&
+      Array.isArray(parsed.questions) &&
+      parsed.questions.length > 0 &&
+      answersCount === 0
+    ) {
+      // Trigger LangGraph Interrupt
+      const resumedAnswers = interrupt({
+        status: "NEEDS_INPUT",
+        questions: parsed.questions,
+      }) as Record<string, any> | undefined;
 
+      const finalAnswers = resumedAnswers || userAnswers;
+
+      // Re-invoke LLM with user answers
+      const secondResponse = await llm.invoke([
+        new SystemMessage(systemPrompt),
+        new HumanMessage(
+          `Project Name: ${projectName}\nVision Description:\n${ideaText}\n\nUser Answers Provided:\n${JSON.stringify(finalAnswers)}`
+        ),
+      ]);
+
+      const secondRaw = typeof secondResponse.content === "string" ? secondResponse.content : JSON.stringify(secondResponse.content);
+      const secondCleaned = cleanJsonText(secondRaw);
+      const secondParsed = JSON.parse(secondCleaned);
+
+      const validated = requirementSynthesisSchema.parse(secondParsed);
+      return {
+        result: validated,
+        userAnswers: finalAnswers,
+        status: "COMPLETED",
+        error: null,
+      };
+    }
+
+    const validated = requirementSynthesisSchema.parse(parsed);
     return {
       result: validated,
       status: "COMPLETED",
@@ -114,7 +222,6 @@ ${ideaText}`;
     };
   } catch (err: any) {
     console.error("AI Synthesis Error, using fallback generator:", err);
-    // Graceful fallback to mock output on parsing/validation error
     const fallbackOutput = generateMockRequirementSynthesis(ideaText, projectName);
     return {
       result: fallbackOutput,
@@ -124,13 +231,12 @@ ${ideaText}`;
   }
 }
 
-/**
-  * Compile the LangGraph state graph
-  */
+export const sharedCheckpointer = new MemorySaver();
+
 export function createSynthesisGraph() {
   const workflow = new StateGraph(ForgeFlowGraphState)
     .addNode("synthesize", requirementSynthesisNode)
     .addEdge("__start__", "synthesize");
 
-  return workflow.compile();
+  return workflow.compile({ checkpointer: sharedCheckpointer });
 }

@@ -13,30 +13,38 @@ export interface QuotaUsageResult {
   maxRequests: number;
   remainingTokens: number;
   remainingRequests: number;
-  resetDate: string;
+  resetDate: string; // Daily reset: "Daily at 00:00 UTC"
   isExhausted: boolean;
   status: "healthy" | "warning" | "critical" | "exhausted";
+  // Tavily Monthly Research Credit Counter
+  tavilySearchCount: number;
+  maxTavilySearches: number;
+  remainingTavilySearches: number;
+  tavilyResetDate: string; // Monthly reset on 1st of month
+  isTavilyExhausted: boolean;
 }
 
 export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsageResult> {
   const maxProjects = PLAN_LIMITS.FREE.maxProjects;
   const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
   const maxRequests = PLAN_LIMITS.FREE.aiRequestLimit;
+  const maxTavilySearches = PLAN_LIMITS.FREE.tavilyMonthlyLimit;
 
   // Projects count
   const projectsCount = await prisma.project.count({
     where: { ownerId: userId },
   });
 
-  // Calculate daily 24-hour UTC reset window
+  // Calculate daily 24-hour UTC reset window for LLMs (Groq / Gemini)
   const now = new Date();
   const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
   const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
 
-  // Aggregate AI Usage today
+  // Aggregate LLM Usage today (Groq & Gemini)
   const usageAggregate = await prisma.aiUsageLog.aggregate({
     where: {
       userId,
+      provider: { in: ["groq", "gemini"] },
       createdAt: {
         gte: startOfToday,
         lte: endOfToday,
@@ -68,8 +76,26 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
     status = "warning";
   }
 
-  // Daily reset format matching Groq provider cadence
   const resetDate = "Daily at 00:00 UTC";
+
+  // Calculate monthly reset window for Tavily credits (Resets on 1st of month)
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+
+  const tavilyCount = await prisma.aiUsageLog.count({
+    where: {
+      userId,
+      provider: "tavily",
+      createdAt: {
+        gte: startOfMonth,
+      },
+    },
+  });
+
+  const remainingTavilySearches = Math.max(0, maxTavilySearches - tavilyCount);
+  const isTavilyExhausted = tavilyCount >= maxTavilySearches;
+
+  const tavilyResetDate = `1st of ${nextMonth.toLocaleString("en-US", { month: "short", timeZone: "UTC" })}`;
 
   const { isAdmin } = await checkIsSuperAdminAction();
 
@@ -86,6 +112,12 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
     resetDate,
     isExhausted: isAdmin ? false : isExhausted,
     status: isAdmin ? "healthy" : status,
+    // Tavily details
+    tavilySearchCount: tavilyCount,
+    maxTavilySearches: isAdmin ? 999999 : maxTavilySearches,
+    remainingTavilySearches: isAdmin ? 999999 : remainingTavilySearches,
+    tavilyResetDate,
+    isTavilyExhausted: isAdmin ? false : isTavilyExhausted,
   };
 }
 
@@ -142,10 +174,34 @@ export async function checkUserAiQuotaAction(userId: string) {
   return { allowed: true };
 }
 
+export async function checkUserTavilyQuotaAction(userId: string) {
+  const { isAdmin } = await checkIsSuperAdminAction();
+  if (isAdmin) {
+    return { allowed: true, isAdmin: true };
+  }
+
+  const usage = await getUserQuotaUsageAction(userId);
+  if (usage.isTavilyExhausted) {
+    await logAuditEventAction({
+      userId,
+      action: "AI_QUOTA_TRIGGERED",
+      metadata: { reason: "TAVILY_QUOTA_EXCEEDED", searchCount: usage.tavilySearchCount, maxTavilySearches: usage.maxTavilySearches },
+    });
+    return {
+      allowed: false,
+      error: {
+        code: ERROR_CODES.FREE_TAVILY_QUOTA_EXCEEDED,
+        message: `Monthly web research credit limit reached (${usage.maxTavilySearches} searches / month). Resets on ${usage.tavilyResetDate}.`,
+      },
+    };
+  }
+  return { allowed: true };
+}
+
 export async function logAiUsageAction(params: {
   userId: string;
   projectId?: string | null;
-  operation: "chat" | "analyze" | "architecture" | "roadmap" | "document";
+  operation: "chat" | "analyze" | "architecture" | "roadmap" | "document" | "web_search";
   provider: "groq" | "gemini" | "tavily";
   model?: string;
   promptTokens?: number;
@@ -157,7 +213,7 @@ export async function logAiUsageAction(params: {
   try {
     const prompt = params.promptTokens || 0;
     const completion = params.completionTokens || 0;
-    const total = params.totalTokens || prompt + completion || 150; // default estimated usage if provider doesn't output tokens
+    const total = params.totalTokens || prompt + completion || (params.provider === "tavily" ? 1 : 150);
 
     await prisma.aiUsageLog.create({
       data: {

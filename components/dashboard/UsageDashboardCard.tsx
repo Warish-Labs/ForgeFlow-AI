@@ -4,7 +4,7 @@ import { useState } from "react";
 import { QuotaUsageResult } from "@/lib/services/quota";
 import { PremiumComingSoonModal } from "@/components/ui/PremiumComingSoonModal";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { SparklesIcon, CpuIcon, LayersIcon, ClockIcon, LockIcon } from "lucide-react";
+import { SparklesIcon, CpuIcon, LayersIcon, ClockIcon, SearchIcon } from "lucide-react";
 
 interface UsageDashboardCardProps {
   usage: QuotaUsageResult;
@@ -15,7 +15,7 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
 
   const projectPercent = Math.min(100, Math.round((usage.projectsCount / usage.maxProjects) * 100));
   const tokenPercent = Math.min(100, Math.round((usage.totalTokens / usage.maxTokens) * 100));
-  const requestPercent = Math.min(100, Math.round((usage.totalRequests / usage.maxRequests) * 100));
+  const tavilyPercent = Math.min(100, Math.round((usage.tavilySearchCount / usage.maxTavilySearches) * 100));
 
   const statusColors = {
     healthy: "text-[#2fe6b0] bg-[#2fe6b0]/10 border-[#2fe6b0]/30",
@@ -34,10 +34,10 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
             </div>
             <div>
               <CardTitle className="text-sm font-bold text-[#f3f6fc]">
-                Account AI Usage & Plan Limits
+                Multi-Provider AI Usage & Cadence Limits
               </CardTitle>
               <p className="text-[11px] text-[#9aa4b8]">
-                Server-enforced daily quota & tenant bounds
+                Groq/Gemini Daily Reset (00:00 UTC) • Tavily Web Search Monthly Reset (1st of month)
               </p>
             </div>
           </div>
@@ -66,8 +66,8 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
         </CardHeader>
 
         <CardContent className="p-5 pt-2 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Projects Quota */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Active Projects Quota */}
             <div className="rounded-xl border border-[#1b2338] bg-[#070a14] p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-[#9aa4b8] flex items-center gap-1.5">
@@ -88,15 +88,15 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
               <p className="text-[10px] text-[#5c6980]">
                 {usage.projectsCount >= usage.maxProjects
                   ? "Free limit reached (1 Project max)"
-                  : `${usage.maxProjects - usage.projectsCount} project slot remaining`}
+                  : `${usage.maxProjects - usage.projectsCount} slot remaining`}
               </p>
             </div>
 
-            {/* Token Quota */}
+            {/* LLM Token Quota (Daily 24h) */}
             <div className="rounded-xl border border-[#1b2338] bg-[#070a14] p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-[#9aa4b8] flex items-center gap-1.5">
-                  <CpuIcon className="h-3.5 w-3.5 text-[#38b6ff]" /> AI Token Quota
+                  <CpuIcon className="h-3.5 w-3.5 text-[#38b6ff]" /> LLM Daily Tokens
                 </span>
                 <span className="font-mono font-bold text-[#f3f6fc]">
                   {(usage.totalTokens / 1000).toFixed(1)}k / {(usage.maxTokens / 1000).toFixed(0)}k
@@ -115,15 +115,15 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
                 />
               </div>
               <p className="text-[10px] text-[#5c6980]">
-                {(usage.remainingTokens / 1000).toFixed(1)}k tokens available
+                Resets daily at 00:00 UTC
               </p>
             </div>
 
-            {/* Requests Quota */}
+            {/* LLM Requests Quota (Daily 24h) */}
             <div className="rounded-xl border border-[#1b2338] bg-[#070a14] p-3.5 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-[#9aa4b8] flex items-center gap-1.5">
-                  <ClockIcon className="h-3.5 w-3.5 text-[#38b6ff]" /> AI Requests
+                  <ClockIcon className="h-3.5 w-3.5 text-[#38b6ff]" /> Daily LLM Requests
                 </span>
                 <span className="font-mono font-bold text-[#f3f6fc]">
                   {usage.totalRequests} / {usage.maxRequests}
@@ -132,13 +132,36 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
               <div className="h-2 w-full rounded-full bg-[#131a2c] overflow-hidden">
                 <div
                   className={`h-full transition-all duration-500 ${
-                    requestPercent >= 90 ? "bg-rose-500" : "bg-[#38b6ff]"
+                    usage.totalRequests >= usage.maxRequests ? "bg-rose-500" : "bg-[#38b6ff]"
                   }`}
-                  style={{ width: `${requestPercent}%` }}
+                  style={{ width: `${Math.min(100, (usage.totalRequests / usage.maxRequests) * 100)}%` }}
                 />
               </div>
               <p className="text-[10px] text-[#5c6980]">
-                Reset window: {usage.resetDate}
+                {usage.resetDate}
+              </p>
+            </div>
+
+            {/* Tavily Web Research Credits (Monthly 1st of month) */}
+            <div className="rounded-xl border border-[#1b2338] bg-[#070a14] p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-[#9aa4b8] flex items-center gap-1.5">
+                  <SearchIcon className="h-3.5 w-3.5 text-purple-400" /> Web Research Credits
+                </span>
+                <span className="font-mono font-bold text-[#f3f6fc]">
+                  {usage.tavilySearchCount} / {usage.maxTavilySearches}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-[#131a2c] overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    tavilyPercent >= 90 ? "bg-rose-500" : "bg-purple-500"
+                  }`}
+                  style={{ width: `${tavilyPercent}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-[#5c6980]">
+                Monthly reset: {usage.tavilyResetDate}
               </p>
             </div>
           </div>
@@ -149,7 +172,7 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Upgrade to ForgeFlow Premium"
-        description="Unlock unlimited projects, priority Groq Llama-3 70B AI execution, and team blueprint sync."
+        description="Unlock unlimited projects, priority Groq Llama-3 70B AI execution, and 5,000 monthly Tavily live web research credits."
       />
     </>
   );
