@@ -68,7 +68,7 @@ export async function getUserRole(userId?: string | null, email?: string | null)
     // 1. Whitelisted emails are ALWAYS SUPER_ADMIN
     if (isWhitelisted) {
       if (userId && cleanEmail) {
-        prisma.user.upsert({
+        await prisma.user.upsert({
           where: { id: userId },
           create: { id: userId, email: cleanEmail, role: "SUPER_ADMIN" },
           update: { email: cleanEmail, role: "SUPER_ADMIN" },
@@ -93,8 +93,10 @@ export async function getUserRole(userId?: string | null, email?: string | null)
 
     // 3. Non-whitelisted new user -> default USER
     if (userId && cleanEmail) {
-      prisma.user.create({
-        data: { id: userId, email: cleanEmail, role: "USER" },
+      await prisma.user.upsert({
+        where: { id: userId },
+        create: { id: userId, email: cleanEmail, role: "USER" },
+        update: { email: cleanEmail },
       }).catch((e) => console.error("[getUserRole] DB user creation failed:", e));
     }
 

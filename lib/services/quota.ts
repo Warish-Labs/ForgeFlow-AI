@@ -95,27 +95,32 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
 }
 
 export async function checkUserCanCreateProjectAction(userId: string) {
-  const { isAdmin } = await checkIsSuperAdminAction();
-  if (isAdmin) {
-    return { allowed: true, isAdmin: true };
-  }
+  try {
+    const { isAdmin } = await checkIsSuperAdminAction();
+    if (isAdmin) {
+      return { allowed: true, isAdmin: true };
+    }
 
-  const usage = await getUserQuotaUsageAction(userId);
-  if (usage.projectsCount >= usage.maxProjects) {
-    await logAuditEventAction({
-      userId,
-      action: "AI_QUOTA_TRIGGERED",
-      metadata: { reason: "PROJECT_LIMIT_EXCEEDED", projectsCount: usage.projectsCount, maxProjects: usage.maxProjects },
-    });
-    return {
-      allowed: false,
-      error: {
-        code: ERROR_CODES.FREE_PROJECT_LIMIT_REACHED,
-        message: `Free tier is limited to ${usage.maxProjects} project. Please upgrade to Premium for unlimited projects.`,
-      },
-    };
+    const usage = await getUserQuotaUsageAction(userId);
+    if (usage.projectsCount >= usage.maxProjects) {
+      await logAuditEventAction({
+        userId,
+        action: "AI_QUOTA_TRIGGERED",
+        metadata: { reason: "PROJECT_LIMIT_EXCEEDED", projectsCount: usage.projectsCount, maxProjects: usage.maxProjects },
+      }).catch(() => {});
+      return {
+        allowed: false,
+        error: {
+          code: ERROR_CODES.FREE_PROJECT_LIMIT_REACHED,
+          message: `Free tier is limited to ${usage.maxProjects} project. Please upgrade to Premium for unlimited projects.`,
+        },
+      };
+    }
+    return { allowed: true };
+  } catch (err) {
+    console.error("[checkUserCanCreateProjectAction] Error checking quota:", err);
+    return { allowed: true };
   }
-  return { allowed: true };
 }
 
 export async function checkUserAiQuotaAction(userId: string) {

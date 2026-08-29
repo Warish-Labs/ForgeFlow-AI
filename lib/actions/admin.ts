@@ -65,6 +65,8 @@ export interface AdminMetricsResult {
 
 // ─── Overview Metrics ─────────────────────────────────────────────────────────
 
+// ─── Overview Metrics ─────────────────────────────────────────────────────────
+
 export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
   const { userId: adminUserId } = await requireAdmin();
   if (adminUserId) {
@@ -108,31 +110,30 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
     userProjectsGroup.forEach((u) => u.ownerId && allUserIdsSet.add(u.ownerId));
     userUsageGroup.forEach((u) => u.userId && allUserIdsSet.add(u.userId));
 
-    const allUserIds = Array.from(allUserIdsSet);
-    const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
-
-    // Fetch Clerk user info — filter to valid Clerk user IDs only (starts with user_)
+    // Fetch all Clerk users directly to capture newly registered accounts
     const clerkUsers: Record<string, AdminUserInfo> = {};
-    const validClerkUserIds = allUserIds.filter((id) => id.startsWith("user_"));
-    if (validClerkUserIds.length > 0) {
-      try {
-        const client = await clerkClient();
-        const res = await client.users.getUserList({ userId: validClerkUserIds, limit: 100 });
-        const users = Array.isArray(res) ? res : (res?.data ?? []);
-        for (const u of users) {
-          clerkUsers[u.id] = {
-            userId: u.id,
-            fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") ||
-              u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
-            email: u.emailAddresses[0]?.emailAddress || "",
-            imageUrl: u.imageUrl || "",
-          };
-        }
-      } catch (err) {
-        console.error("[getAdminMetricsAction] Clerk getUserList error:", err);
+    try {
+      const client = await clerkClient();
+      const res = await client.users.getUserList({ limit: 100 });
+      const users = Array.isArray(res) ? res : (res?.data ?? []);
+      for (const u of users) {
+        allUserIdsSet.add(u.id);
+        const email = u.emailAddresses[0]?.emailAddress || "";
+        const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ") ||
+          (email ? email.split("@")[0] : u.id.substring(0, 12));
+        clerkUsers[u.id] = {
+          userId: u.id,
+          fullName,
+          email,
+          imageUrl: u.imageUrl || "",
+        };
       }
+    } catch (err) {
+      console.error("[getAdminMetricsAction] Clerk getUserList error:", err);
     }
 
+    const allUserIds = Array.from(allUserIdsSet);
+    const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
     const dbUserMap = new Map(dbUsers.map((u) => [u.id, u]));
 
     const userTable = allUserIds.map((uId) => {
@@ -183,7 +184,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       createdAt: new Date(w.createdAt).toLocaleString(),
     }));
 
-    const logs = await prisma.aiUsageLog.findMany({ take: 50, orderBy: { createdAt: "desc" } });
+    const logs = await prisma.aiUsageLog.findMany({ take: 50, orderBy: { createdAt: "desc" } }).catch(() => []);
     const recentLogs = logs.map((l) => ({
       id: l.id, userId: l.userId, projectId: l.projectId, operation: l.operation,
       provider: l.provider, model: l.model, totalTokens: l.totalTokens,
@@ -191,7 +192,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       createdAt: new Date(l.createdAt).toLocaleString(),
     }));
 
-    const auditEntries = await prisma.auditLog.findMany({ take: 30, orderBy: { createdAt: "desc" } });
+    const auditEntries = await prisma.auditLog.findMany({ take: 30, orderBy: { createdAt: "desc" } }).catch(() => []);
     const auditLogs = auditEntries.map((a) => ({
       id: a.id, userId: a.userId, projectId: a.projectId, action: a.action,
       metadata: JSON.parse(JSON.stringify(a.metadata || {})),

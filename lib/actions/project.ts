@@ -24,35 +24,35 @@ async function getAuthUserId(): Promise<string | null> {
 export async function createProjectAction(
   rawInput: CreateProjectInput
 ): Promise<ActionResult<{ id: string; name: string }>> {
-  const userId = await getAuthUserId();
-  if (!userId) {
-    return {
-      success: false,
-      error: { code: "UNAUTHORIZED", message: "You must be signed in to create a project" },
-    };
-  }
-
-  // 0. Quota check: Enforce free tier max projects limit
-  const projectQuotaCheck = await checkUserCanCreateProjectAction(userId);
-  if (!projectQuotaCheck.allowed) {
-    return {
-      success: false,
-      error: projectQuotaCheck.error!,
-    };
-  }
-
-  const parseResult = createProjectSchema.safeParse(rawInput);
-  if (!parseResult.success) {
-    const issue = parseResult.error.issues[0];
-    return {
-      success: false,
-      error: { code: "VALIDATION_ERROR", message: issue ? issue.message : "Invalid project input" },
-    };
-  }
-
-  const { name, ideaText, problemStatement, techStack } = parseResult.data;
-
   try {
+    const userId = await getAuthUserId();
+    if (!userId) {
+      return {
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "You must be signed in to create a project" },
+      };
+    }
+
+    // 0. Quota check: Enforce free tier max projects limit
+    const projectQuotaCheck = await checkUserCanCreateProjectAction(userId);
+    if (!projectQuotaCheck.allowed) {
+      return {
+        success: false,
+        error: projectQuotaCheck.error!,
+      };
+    }
+
+    const parseResult = createProjectSchema.safeParse(rawInput);
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return {
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: issue ? issue.message : "Invalid project input" },
+      };
+    }
+
+    const { name, ideaText, problemStatement, techStack } = parseResult.data;
+
     const project = await prisma.project.create({
       data: {
         ownerId: userId,
@@ -68,19 +68,23 @@ export async function createProjectAction(
       },
     });
 
-    revalidatePath("/dashboard");
+    try {
+      revalidatePath("/dashboard");
+    } catch (_) {}
+
     await logAuditEventAction({
       userId,
       projectId: project.id,
       action: "PROJECT_CREATED",
       metadata: { name: project.name },
-    });
+    }).catch(() => {});
+
     return { success: true, data: project };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating project:", error);
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to create project. Please try again." },
+      error: { code: "INTERNAL_ERROR", message: error?.message || "Failed to create project. Please try again." },
     };
   }
 }
