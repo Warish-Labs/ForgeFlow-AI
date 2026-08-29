@@ -44,6 +44,93 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
 
   return (
     <div className="space-y-8">
+      {/* Super Admin Governance Quick Reference */}
+      <Card className="border-[#1b2338] bg-[#0d1220]">
+        <CardHeader className="p-5 pb-3">
+          <CardTitle className="text-sm font-bold text-[#f3f6fc] flex items-center gap-2">
+            <SettingsIcon className="h-4 w-4 text-[#38b6ff]" /> Super Admin Governance Guide
+          </CardTitle>
+          <p className="text-[11px] text-[#9aa4b8] mt-0.5">
+            Quick reference reminder of administrative capabilities and capabilities across this panel.
+          </p>
+        </CardHeader>
+        <CardContent className="p-5 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                1. Overview Tab
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Monitor live calculated database aggregates: registered users, active projects, LLM token usage, request counts, and success rates.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                2. Users Directory
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Inspect registered users, view computed token usage/projects, trigger session password resets, ban accounts, and dispatch email broadcasts.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                3. Subscriptions / Waitlist
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Review priority waitlist & premium interest signups. Filter signups and dispatch instant confirmation or announcement emails.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                4. AI Usage Analytics
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Analyze operational telemetry: LLM provider distributions (Groq vs Gemini), model breakdowns, operation types, and latency metrics.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                5. System & Audit Logs
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Switch between System Telemetry / Execution Traces and Governance Audit Logs (role updates, bans, pricing changes).
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                6. Documents Registry
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Inspect generated architecture specs across all tenants with creator name resolution and user ID tooltip inspection.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                7. Support Inbox
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Read contact submissions, toggle read/unread status, dispatch direct email replies via Resend, and archive messages with confirmation.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
+              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
+                8. Settings & Pricing
+              </span>
+              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
+                Configure baseline $/1M input/output token pricing rates per LLM provider to calculate accurate platform expenditure.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Model Pricing Config */}
       <Card className="border-[#1b2338] bg-[#0d1220]">
         <CardHeader className="p-5 pb-3">

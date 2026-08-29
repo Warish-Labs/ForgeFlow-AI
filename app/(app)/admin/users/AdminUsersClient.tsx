@@ -27,6 +27,8 @@ interface AdminUsersClientProps {
 export function AdminUsersClient({ userTable, watchlistSubscribers }: AdminUsersClientProps) {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"browse" | "broadcast">("browse");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   // User detail modal
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -49,6 +51,9 @@ export function AdminUsersClient({ userTable, watchlistSubscribers }: AdminUsers
     u.email.toLowerCase().includes(search.toLowerCase()) ||
     u.fullName.toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedUsers = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   async function handleOpenUser(userId: string) {
     setSelectedUserId(userId);
@@ -137,36 +142,45 @@ export function AdminUsersClient({ userTable, watchlistSubscribers }: AdminUsers
               <input
                 placeholder="Search name, email, ID..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full rounded-lg border border-[#1b2338] bg-[#070a14] pl-8 pr-3 py-1 text-xs text-[#f3f6fc] placeholder-[#5c6980] focus:border-[#38b6ff] focus:outline-none"
               />
             </div>
           </CardHeader>
-          <CardContent className="p-5 pt-2 overflow-x-auto">
+          <CardContent className="p-5 pt-2 overflow-x-auto space-y-4">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-[#1b2338] text-[#5c6980] font-mono">
                   <th className="pb-2.5 font-normal">User</th>
-                  <th className="pb-2.5 font-normal">Plan</th>
+                  <th className="pb-2.5 font-normal">Role</th>
+                  <th className="pb-2.5 font-normal">Signed Up</th>
                   <th className="pb-2.5 font-normal">Projects</th>
-                  <th className="pb-2.5 font-normal">Tokens (lifetime)</th>
+                  <th className="pb-2.5 font-normal">Tokens Used</th>
                   <th className="pb-2.5 font-normal">Last Active</th>
                   <th className="pb-2.5 font-normal">Status</th>
                   <th className="pb-2.5 font-normal">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1b2338]/60 text-[#f3f6fc]">
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="py-6 text-center text-[#5c6980]">No users match your search.</td></tr>
-                ) : filtered.map((u) => (
+                {paginatedUsers.length === 0 ? (
+                  <tr><td colSpan={8} className="py-6 text-center text-[#5c6980]">No users match your search.</td></tr>
+                ) : paginatedUsers.map((u) => (
                   <tr key={u.userId} className="hover:bg-[#131a2c]/50">
                     <td className="py-2.5">
                       <div className="font-medium text-[#f3f6fc]">{u.fullName || "—"}</div>
                       <div className="text-[10px] text-[#5c6980] font-mono">{u.email || u.userId.substring(0, 16) + "…"}</div>
                     </td>
                     <td className="py-2.5">
-                      <span className="px-2 py-0.5 rounded bg-[#1060ee]/15 text-[#38b6ff] border border-[#1060ee]/30 font-mono text-[11px]">{u.plan}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border ${
+                        u.role === "SUPER_ADMIN" ? "bg-purple-500/15 text-purple-300 border-purple-500/40" : "bg-[#1060ee]/15 text-[#38b6ff] border-[#1060ee]/30"
+                      }`}>
+                        {u.role || "USER"}
+                      </span>
                     </td>
+                    <td className="py-2.5 font-mono text-[11px] text-[#9aa4b8]">{u.createdAt || "N/A"}</td>
                     <td className="py-2.5 font-mono">{u.projectsCount}</td>
                     <td className="py-2.5 font-mono text-[#2fe6b0]">{u.tokensUsed.toLocaleString()}</td>
                     <td className="py-2.5 font-mono text-[11px] text-[#9aa4b8]">{u.lastActive}</td>
@@ -195,6 +209,32 @@ export function AdminUsersClient({ userTable, watchlistSubscribers }: AdminUsers
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-3 border-t border-[#1b2338] text-xs font-mono text-[#9aa4b8]">
+                <span>
+                  Showing {Math.min((currentPage - 1) * pageSize + 1, filtered.length)} to {Math.min(currentPage * pageSize, filtered.length)} of {filtered.length} users
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 rounded border border-[#1b2338] bg-[#070a14] hover:bg-[#131a2c] disabled:opacity-50 transition-all text-[#f3f6fc]"
+                  >
+                    Previous
+                  </button>
+                  <span>Page {currentPage} of {totalPages}</span>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 rounded border border-[#1b2338] bg-[#070a14] hover:bg-[#131a2c] disabled:opacity-50 transition-all text-[#f3f6fc]"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (

@@ -67,6 +67,7 @@ export function AdminDocumentsClient({ documents }: AdminDocumentsClientProps) {
               <tr className="border-b border-[#1b2338] text-[#5c6980] font-mono">
                 <th className="pb-2.5 font-normal">Document Title</th>
                 <th className="pb-2.5 font-normal">Type</th>
+                <th className="pb-2.5 font-normal">Creator</th>
                 <th className="pb-2.5 font-normal">Project</th>
                 <th className="pb-2.5 font-normal">Version</th>
                 <th className="pb-2.5 font-normal">Status</th>
@@ -77,7 +78,7 @@ export function AdminDocumentsClient({ documents }: AdminDocumentsClientProps) {
             <tbody className="divide-y divide-[#1b2338]/60 text-[#f3f6fc]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-[#5c6980]">
+                  <td colSpan={8} className="py-6 text-center text-[#5c6980]">
                     No generated documents match search.
                   </td>
                 </tr>
@@ -86,6 +87,14 @@ export function AdminDocumentsClient({ documents }: AdminDocumentsClientProps) {
                   <tr key={d.id} className="hover:bg-[#131a2c]/50">
                     <td className="py-2.5 font-medium text-[#f3f6fc]">{d.title}</td>
                     <td className="py-2.5 font-mono text-[11px] text-[#38b6ff]">{d.type}</td>
+                    <td className="py-2.5 font-mono text-[11px]">
+                      <span
+                        title={`User ID: ${d.ownerId}${d.creatorEmail ? ` (${d.creatorEmail})` : ""}`}
+                        className="cursor-help text-[#f3f6fc] border-b border-dashed border-[#5c6980]/50 hover:border-[#38b6ff] hover:text-[#38b6ff] transition-colors"
+                      >
+                        {d.creatorName || "System User"}
+                      </span>
+                    </td>
                     <td className="py-2.5 font-mono text-[11px] text-[#9aa4b8]">{d.projectName}</td>
                     <td className="py-2.5 font-mono text-[11px]">v{d.version}</td>
                     <td className="py-2.5">

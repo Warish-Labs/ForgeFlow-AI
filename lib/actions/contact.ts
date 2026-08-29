@@ -160,6 +160,20 @@ export async function markMessageReadAction(messageId: string): Promise<{ succes
   }
 }
 
+export async function toggleMessageReadAction(messageId: string, isRead: boolean): Promise<{ success: boolean }> {
+  try {
+    await requireAdmin();
+    await prisma.contactMessage.update({
+      where: { id: messageId },
+      data: { isRead },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error("[toggleMessageReadAction] error:", err);
+    return { success: false };
+  }
+}
+
 export async function softDeleteMessageAction(messageId: string): Promise<{ success: boolean }> {
   try {
     await requireAdmin();

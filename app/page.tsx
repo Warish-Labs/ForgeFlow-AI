@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/ui/Footer";
 import { AnimatedHeroLogo } from "@/components/marketing/AnimatedHeroLogo";
+import { AnimatedDocumentCounter } from "@/components/home/AnimatedDocumentCounter";
 import { PremiumComingSoonModal } from "@/components/ui/PremiumComingSoonModal";
 import {
   CompassIcon,
@@ -81,6 +82,10 @@ export default function LandingPage() {
             <br className="hidden md:block" />
             Never lose context in disposable AI chat windows again.
           </p>
+
+          <div className="mt-6 flex justify-center hero-fade-2">
+            <AnimatedDocumentCounter />
+          </div>
 
           {/* CTA buttons */}
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 hero-fade-3">

@@ -46,7 +46,8 @@ export interface AdminMetricsResult {
   models: { model: string; provider: string; totalTokens: number; totalRequests: number }[];
   userTable: {
     userId: string; fullName: string; email: string; imageUrl: string;
-    plan: string; projectsCount: number; tokensUsed: number;
+    role: "SUPER_ADMIN" | "USER"; createdAt: string;
+    plan: string; projectsCount: number; documentsCount: number; tokensUsed: number;
     remainingTokens: number; requestsCount: number; lastActive: string;
     status: "healthy" | "warning" | "critical" | "exhausted";
   }[];
@@ -80,7 +81,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       totalTokensAgg, todayAgg, monthAgg,
       providerGroups, operationGroups, modelGroups,
       userProjectsGroup, userUsageGroup,
-      totalDocuments, totalContactMessages,
+      totalDocuments, totalContactMessages, dbUsers,
     ] = await Promise.all([
       prisma.project.count(),
       prisma.aiUsageLog.count(),
@@ -96,16 +97,18 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
       prisma.document.count(),
       prisma.contactMessage.count({ where: { isDeleted: false } }),
+      prisma.user.findMany({ select: { id: true, email: true, role: true, createdAt: true } }).catch(() => []),
     ]);
 
     const successRatePercent = totalLogs > 0 ? Math.round((successfulLogs / totalLogs) * 100) : 100;
     const totalTokens = totalTokensAgg._sum.totalTokens || 0;
 
-    const allUserIds = Array.from(new Set([
-      ...userProjectsGroup.map((u) => u.ownerId),
-      ...userUsageGroup.map((u) => u.userId),
-    ])).filter((id): id is string => Boolean(id));
+    const allUserIdsSet = new Set<string>();
+    dbUsers.forEach((u) => u.id && allUserIdsSet.add(u.id));
+    userProjectsGroup.forEach((u) => u.ownerId && allUserIdsSet.add(u.ownerId));
+    userUsageGroup.forEach((u) => u.userId && allUserIdsSet.add(u.userId));
 
+    const allUserIds = Array.from(allUserIdsSet);
     const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
 
     // Fetch Clerk user info — filter to valid Clerk user IDs only (starts with user_)
@@ -130,9 +133,17 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       }
     }
 
+    const dbUserMap = new Map(dbUsers.map((u) => [u.id, u]));
+
     const userTable = allUserIds.map((uId) => {
       const proj = userProjectsGroup.find((p) => p.ownerId === uId);
       const usage = userUsageGroup.find((u) => u.userId === uId);
+      const dbUser = dbUserMap.get(uId);
+      const clerk = clerkUsers[uId];
+
+      const email = clerk?.email || dbUser?.email || "";
+      const isSuperAdmin = dbUser?.role === "SUPER_ADMIN" || (email && ["warishlabs@gmail.com", "warishdeveloper@gmail.com", "admin@warishlabs.in"].includes(email.toLowerCase()));
+
       const tokensUsed = usage?._sum.totalTokens || 0;
       const remainingTokens = Math.max(0, maxTokens - tokensUsed);
       const percent = (tokensUsed / maxTokens) * 100;
@@ -140,13 +151,19 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       if (tokensUsed >= maxTokens) status = "exhausted";
       else if (percent >= 90) status = "critical";
       else if (percent >= 75) status = "warning";
-      const clerk = clerkUsers[uId];
+
       return {
         userId: uId,
-        fullName: clerk?.fullName || uId.substring(0, 14) + "...",
-        email: clerk?.email || "",
+        fullName: clerk?.fullName || (email ? email.split("@")[0] : uId.substring(0, 14) + "..."),
+        email,
         imageUrl: clerk?.imageUrl || "",
-        plan: "FREE", projectsCount: proj?._count.id || 0, tokensUsed, remainingTokens,
+        role: (isSuperAdmin ? "SUPER_ADMIN" : "USER") as "SUPER_ADMIN" | "USER",
+        createdAt: dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString() : "N/A",
+        plan: isSuperAdmin ? "ADMIN" : "FREE",
+        projectsCount: proj?._count.id || 0,
+        documentsCount: 0,
+        tokensUsed,
+        remainingTokens,
         requestsCount: usage?._count.id || 0,
         lastActive: usage?._max.createdAt ? new Date(usage._max.createdAt).toLocaleString() : "N/A",
         status,
@@ -360,27 +377,58 @@ export async function toggleUserBanAction(
 export async function getAdminDocumentsAction() {
   await requireAdmin();
 
-  const docs = await prisma.document.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    include: {
-      project: { select: { name: true, ownerId: true } },
-    },
-  });
+  try {
+    const docs = await prisma.document.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: {
+        project: { select: { name: true, ownerId: true } },
+      },
+    });
 
-  return docs.map((d) => ({
-    id: d.id,
-    projectId: d.projectId,
-    projectName: d.project.name,
-    ownerId: d.project.ownerId,
-    type: d.type,
-    title: d.title,
-    status: d.status,
-    version: d.version,
-    contentPreview: d.content.substring(0, 200),
-    content: d.content,
-    createdAt: new Date(d.createdAt).toLocaleString(),
-  }));
+    const ownerIds = Array.from(new Set(docs.map((d) => d.project?.ownerId).filter((id): id is string => Boolean(id))));
+    const clerkUsers: Record<string, { fullName: string; email: string }> = {};
+    const validClerkOwnerIds = ownerIds.filter((id) => id.startsWith("user_"));
+
+    if (validClerkOwnerIds.length > 0) {
+      try {
+        const client = await clerkClient();
+        const res = await client.users.getUserList({ userId: validClerkOwnerIds, limit: 100 });
+        const users = Array.isArray(res) ? res : (res?.data ?? []);
+        for (const u of users) {
+          clerkUsers[u.id] = {
+            fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
+            email: u.emailAddresses[0]?.emailAddress || "",
+          };
+        }
+      } catch (err) {
+        console.error("[getAdminDocumentsAction] Clerk getUserList error:", err);
+      }
+    }
+
+    return docs.map((d) => {
+      const ownerId = d.project?.ownerId || "unknown";
+      const ownerClerk = clerkUsers[ownerId];
+      return {
+        id: d.id,
+        projectId: d.projectId,
+        projectName: d.project?.name || "Deleted Project",
+        ownerId,
+        creatorName: ownerClerk?.fullName || (ownerId.startsWith("user_") ? ownerId.substring(0, 14) + "..." : "System User"),
+        creatorEmail: ownerClerk?.email || "",
+        type: d.type,
+        title: d.title,
+        status: d.status,
+        version: d.version,
+        contentPreview: d.content ? d.content.substring(0, 200) : "",
+        content: d.content || "",
+        createdAt: new Date(d.createdAt).toLocaleString(),
+      };
+    });
+  } catch (err) {
+    console.error("[getAdminDocumentsAction] Error fetching documents:", err);
+    return [];
+  }
 }
 
 // ─── Model Pricing ────────────────────────────────────────────────────────────

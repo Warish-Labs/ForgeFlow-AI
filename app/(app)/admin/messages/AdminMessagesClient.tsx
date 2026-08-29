@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   ContactMessageWithReplies,
   markMessageReadAction,
+  toggleMessageReadAction,
   softDeleteMessageAction,
   sendContactReplyAction,
 } from "@/lib/actions/contact";
@@ -11,8 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   MessageSquareIcon, SearchIcon, MailIcon, SendIcon,
   ArchiveIcon, Loader2Icon, CheckCircle2Icon, AlertCircleIcon,
-  UserIcon, ClockIcon,
+  UserIcon, ClockIcon, MailOpenIcon, AlertTriangleIcon,
 } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 
 interface AdminMessagesClientProps {
   initialMessages: ContactMessageWithReplies[];
@@ -28,6 +30,10 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
   const [replyBody, setReplyBody] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [replyStatus, setReplyStatus] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Archive confirmation modal state
+  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   const selectedMsg = messages.find((m) => m.id === selectedId);
 
@@ -52,12 +58,27 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
     }
   }
 
-  async function handleArchive(id: string) {
-    const res = await softDeleteMessageAction(id);
-    if (res.success) {
-      const remaining = messages.filter((m) => m.id !== id);
-      setMessages(remaining);
-      if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
+  async function handleToggleReadStatus(msg: ContactMessageWithReplies) {
+    const newStatus = !msg.isRead;
+    await toggleMessageReadAction(msg.id, newStatus);
+    setMessages((prev) =>
+      prev.map((item) => (item.id === msg.id ? { ...item, isRead: newStatus } : item))
+    );
+  }
+
+  async function handleConfirmArchive() {
+    if (!confirmArchiveId) return;
+    setIsArchiving(true);
+    try {
+      const res = await softDeleteMessageAction(confirmArchiveId);
+      if (res.success) {
+        const remaining = messages.filter((m) => m.id !== confirmArchiveId);
+        setMessages(remaining);
+        if (selectedId === confirmArchiveId) setSelectedId(remaining[0]?.id ?? null);
+      }
+    } finally {
+      setIsArchiving(false);
+      setConfirmArchiveId(null);
     }
   }
 
@@ -70,10 +91,9 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
       setReplyStatus(res);
       if (res.success) {
         setReplyBody("");
-        // Update local state with new reply
         const newReply = {
           id: String(Date.now()),
-          adminEmail: "Admin",
+          adminEmail: "Super Admin",
           body: replyBody,
           sentAt: new Date().toLocaleString(),
         };
@@ -171,13 +191,24 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
                     <span className="flex items-center gap-1 font-mono text-[10px] text-[#5c6980]"><ClockIcon className="h-3 w-3" />{selectedMsg.createdAt}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleArchive(selectedMsg.id)}
-                  title="Archive message"
-                  className="p-2 rounded-lg border border-[#1b2338] text-[#9aa4b8] hover:text-rose-400 hover:border-rose-500/40 transition-all shrink-0"
-                >
-                  <ArchiveIcon className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleToggleReadStatus(selectedMsg)}
+                    title={selectedMsg.isRead ? "Mark as unread" : "Mark as read"}
+                    className="p-2 rounded-lg border border-[#1b2338] text-[#9aa4b8] hover:text-[#38b6ff] hover:border-[#38b6ff]/40 transition-all shrink-0 text-xs flex items-center gap-1"
+                  >
+                    <MailOpenIcon className="h-4 w-4" />
+                    <span className="text-[10px] font-mono">{selectedMsg.isRead ? "Mark Unread" : "Mark Read"}</span>
+                  </button>
+                  <button
+                    onClick={() => setConfirmArchiveId(selectedMsg.id)}
+                    title="Archive message"
+                    className="p-2 rounded-lg border border-[#1b2338] text-[#9aa4b8] hover:text-rose-400 hover:border-rose-500/40 transition-all shrink-0 text-xs flex items-center gap-1"
+                  >
+                    <ArchiveIcon className="h-4 w-4" />
+                    <span className="text-[10px] font-mono">Delete</span>
+                  </button>
+                </div>
               </div>
 
               {/* Message Body */}
@@ -234,6 +265,44 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
           )}
         </Card>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog.Root open={!!confirmArchiveId} onOpenChange={(open) => !open && setConfirmArchiveId(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" />
+          <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-md translate-x-[-50%] translate-y-[-50%] border border-rose-500/40 bg-[#070a14] text-[#f3f6fc] p-6 shadow-2xl rounded-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                <AlertTriangleIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <Dialog.Title className="text-base font-bold text-[#f3f6fc]">
+                  Delete Contact Message?
+                </Dialog.Title>
+                <p className="text-xs text-[#9aa4b8] mt-0.5">
+                  Are you sure you want to soft-delete this inquiry? It will be archived and hidden from the inbox.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setConfirmArchiveId(null)}
+                className="px-4 py-2 rounded-xl border border-[#1b2338] bg-[#0d1220] text-xs font-medium text-[#9aa4b8] hover:text-[#f3f6fc] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmArchive}
+                disabled={isArchiving}
+                className="px-4 py-2 rounded-xl bg-rose-600 text-xs font-bold text-white hover:bg-rose-700 transition-all inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isArchiving ? <Loader2Icon className="h-3.5 w-3.5 animate-spin" /> : null}
+                Confirm Delete
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }
