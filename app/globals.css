@@ -12,11 +12,35 @@
   --primary: #1060ee;
   --primary-bright: #38b6ff;
   --primary-deep: #0a2a9c;
-  --success: #2fe6b0; /* ONLY accepted proposals, validated requirements, Exported status */
+  --success: #2fe6b0;
   --foreground: #f3f6fc;
   --muted-foreground: #9aa4b8;
   --faint: #5c6980;
   --border: #1b2338;
+
+  /* Solid Navy Palette (Non-glassy rich contrast surfaces) */
+  --navy-950: #050811;
+  --navy-900: #0b101d;
+  --navy-800: #121829;
+  --navy-700: #1a2238;
+  --navy-600: #253150;
+
+  /* Accent & Status Palette */
+  --accent-blue: #1060ee;
+  --accent-cyan: #38b6ff;
+  --accent-teal: #2fe6b0;
+  --accent-muted: #64748b;
+  --accent-purple: #8b5cf6;
+
+  /* Border Scale */
+  --border-subtle: #182238;
+  --border-default: #202c48;
+  --border-accent: rgba(56, 182, 255, 0.35);
+
+  /* Typography Colors */
+  --text-primary: #f3f6fc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
   /* Legacy Scale Fallbacks */
   --surface-canvas: var(--background);
@@ -33,7 +57,7 @@
   --muted: #0d1220;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --input: #131a2c;
+  --input: #121829;
   --ring: #1060ee;
   --radius: 6px;
 

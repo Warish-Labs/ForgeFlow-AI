@@ -33,6 +33,23 @@ export async function createProjectAction(
       };
     }
 
+    const dbUrl =
+      process.env.DATABASE_URL ||
+      process.env.POSTGRES_PRISMA_URL ||
+      process.env.POSTGRES_URL ||
+      process.env.DIRECT_URL;
+
+    if (!dbUrl) {
+      return {
+        success: false,
+        error: {
+          code: "DATABASE_NOT_CONFIGURED",
+          message:
+            "Database connection URL is not configured on your server environment. Please set DATABASE_URL in Vercel project environment settings.",
+        },
+      };
+    }
+
     // 0. Quota check: Enforce free tier max projects limit
     const projectQuotaCheck = await checkUserCanCreateProjectAction(userId);
     if (!projectQuotaCheck.allowed) {

@@ -9,12 +9,25 @@ if (globalForPrisma.prisma && !("watchlist" in globalForPrisma.prisma)) {
   globalForPrisma.prisma = undefined;
 }
 
+const getDatabaseUrl = (): string | undefined => {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.DIRECT_URL
+  );
+};
+
+const activeDbUrl = getDatabaseUrl();
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    ...(process.env.DATABASE_URL
-      ? { datasources: { db: { url: process.env.DATABASE_URL } } }
-      : {}),
+    datasources: {
+      db: {
+        url: activeDbUrl || "postgresql://placeholder:placeholder@localhost:5432/placeholder",
+      },
+    },
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
