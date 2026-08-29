@@ -3,6 +3,12 @@ import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
 
+// Helper to sanitize database URLs in log messages to prevent secret leaks
+function sanitizeText(text: string): string {
+  if (!text) return "";
+  return text.replace(/:[^:@]+@/g, ":****@");
+}
+
 // Helper to ensure .env / .env.local variables are loaded when executed directly via CLI
 function loadEnvFiles() {
   const envFiles = [".env.local", ".env"];
@@ -29,6 +35,7 @@ function loadEnvFiles() {
 
   // Ensure DIRECT_URL falls back to DATABASE_URL if omitted in Vercel environment settings
   if (process.env.DATABASE_URL && !process.env.DIRECT_URL) {
+    console.warn("⚠️ DIRECT_URL is not set. Defaulting DIRECT_URL to DATABASE_URL.");
     process.env.DIRECT_URL = process.env.DATABASE_URL;
   }
 }
@@ -43,12 +50,38 @@ async function runDeploy() {
     return;
   }
 
+  // Debug log environment status safely without printing passwords
+  const sanitizedDbUrl = sanitizeText(process.env.DATABASE_URL);
+  const sanitizedDirectUrl = sanitizeText(process.env.DIRECT_URL || "");
+  console.log(`ℹ️ DATABASE_URL configured: ${sanitizedDbUrl}`);
+  console.log(`ℹ️ DIRECT_URL configured: ${sanitizedDirectUrl}`);
+
+  if (process.env.DIRECT_URL && process.env.DIRECT_URL.includes("-pooler")) {
+    console.warn(
+      "⚠️ WARNING: DIRECT_URL appears to contain '-pooler'. Prisma migrations require a direct connection, not a pooled connection!"
+    );
+  }
+
   console.log("🚀 Running database migrations...");
   try {
-    execSync("npx prisma migrate deploy", { stdio: "inherit", env: process.env });
+    const output = execSync("npx prisma migrate deploy", {
+      encoding: "utf-8",
+      env: process.env,
+      stdio: "pipe",
+    });
+    console.log(sanitizeText(output));
     console.log("✅ Database migrations applied successfully.");
-  } catch (error) {
-    console.error("❌ Prisma migration failed:", error);
+  } catch (error: any) {
+    console.error("❌ Prisma migration failed!");
+    if (error.stdout) {
+      console.error("📋 Prisma Migration STDOUT:\n" + sanitizeText(error.stdout.toString()));
+    }
+    if (error.stderr) {
+      console.error("🚨 Prisma Migration STDERR:\n" + sanitizeText(error.stderr.toString()));
+    }
+    if (error.message) {
+      console.error("💥 Execution Error Message:\n" + sanitizeText(error.message));
+    }
     process.exit(1);
   }
 
@@ -60,13 +93,18 @@ async function runDeploy() {
 
     if (projectCount === 0) {
       console.log("🌱 Database is empty (0 projects found). Running seed script for first deployment...");
-      execSync("npx tsx prisma/seed.ts", { stdio: "inherit", env: process.env });
+      const seedOutput = execSync("npx tsx prisma/seed.ts", {
+        encoding: "utf-8",
+        env: process.env,
+        stdio: "pipe",
+      });
+      console.log(sanitizeText(seedOutput));
       console.log("✅ First-time seed executed successfully.");
     } else {
       console.log(`ℹ️ Seed skipped: Database already initialized with ${projectCount} project(s).`);
     }
-  } catch (error) {
-    console.error("⚠️ Error checking or running seed:", error);
+  } catch (error: any) {
+    console.error("⚠️ Error checking or running seed:", sanitizeText(error.message || String(error)));
   } finally {
     await prisma.$disconnect();
   }
