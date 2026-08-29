@@ -238,4 +238,17 @@ model ModelPricing {
   @@index([provider])
 }
 
+// ─── User Management & RBAC ────────────────────────────────────────────────
+
+model User {
+  id        String   @id // Clerk userId
+  email     String   @unique
+  role      String   @default("USER") // "SUPER_ADMIN" | "USER"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
 

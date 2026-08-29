@@ -4,16 +4,17 @@
  * Centralized authorization utilities for ForgeFlow AI.
  *
  * Security design:
+ * - Single source of truth: Prisma `User.role` column ("SUPER_ADMIN" | "USER").
  * - Admin check is ALWAYS done server-side, never trusting client state.
- * - All /admin/* routes and server actions call requireSuperAdmin() or checkIsAdmin().
- * - Non-admin users are shown a 403 page or receive a thrown error from server actions.
- * - Never expose admin data to non-admin callers — no reliance on UI hiding alone.
- *
- * SECURITY NOTE: ADMIN_USER_IDS, CLERK_SECRET_KEY must never have NEXT_PUBLIC_ prefix.
+ * - All /admin/* routes and server actions call requireAdminPage() or checkIsAdmin().
+ * - Non-admin users are redirected to /dashboard or receive a thrown error from server actions.
  */
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db/prisma";
+
+export type Role = "SUPER_ADMIN" | "USER";
 
 // ─── Admin email whitelist ────────────────────────────────────────────────────
 
@@ -41,7 +42,6 @@ export function isSuperAdminEmail(email?: string | null): boolean {
   if (env1) allowed.add(env1);
   if (env2) allowed.add(env2);
 
-  // Also support comma-separated ADMIN_USER_IDS for email or user IDs
   const envIds = process.env.ADMIN_USER_IDS?.split(",") ?? [];
   for (const id of envIds) {
     const trimmed = id.trim().toLowerCase();
@@ -51,12 +51,62 @@ export function isSuperAdminEmail(email?: string | null): boolean {
   return allowed.has(target);
 }
 
+/**
+ * Single source of truth for user role resolution.
+ * Checks Prisma User.role first.
+ * If user does not exist in DB yet, checks admin whitelist email list.
+ * If whitelisted, provisions user in Prisma DB as SUPER_ADMIN; otherwise USER.
+ * Returns canonical Role ("SUPER_ADMIN" | "USER").
+ */
+export async function getUserRole(userId?: string | null, email?: string | null): Promise<Role> {
+  if (!userId && !email) return "USER";
+
+  try {
+    const cleanEmail = email?.trim().toLowerCase();
+
+    // 1. Query DB by userId or email
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(userId ? [{ id: userId }] : []),
+          ...(cleanEmail ? [{ email: cleanEmail }] : []),
+        ],
+      },
+    });
+
+    if (existing) {
+      return existing.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "USER";
+    }
+
+    // 2. Not in DB yet — check whitelist
+    const isWhitelisted = isSuperAdminEmail(email);
+    const assignedRole: Role = isWhitelisted ? "SUPER_ADMIN" : "USER";
+
+    // 3. Provision in DB if userId and email are available
+    if (userId && cleanEmail) {
+      await prisma.user.upsert({
+        where: { id: userId },
+        create: {
+          id: userId,
+          email: cleanEmail,
+          role: assignedRole,
+        },
+        update: {
+          email: cleanEmail,
+          ...(isWhitelisted ? { role: "SUPER_ADMIN" } : {}),
+        },
+      }).catch((e) => console.error("[getUserRole] DB upsert failed:", e));
+    }
+
+    return assignedRole;
+  } catch (err) {
+    console.error("[getUserRole] DB lookup error:", err);
+    return isSuperAdminEmail(email) ? "SUPER_ADMIN" : "USER";
+  }
+}
+
 // ─── Session Auth Check ───────────────────────────────────────────────────────
 
-/**
- * Returns the current authenticated user's ID or null.
- * Safe to call from server components and server actions.
- */
 export async function getAuthenticatedUserId(): Promise<string | null> {
   try {
     const { userId } = await auth();
@@ -70,6 +120,7 @@ export async function getAuthenticatedUserId(): Promise<string | null> {
 
 export interface AdminCheckResult {
   isAdmin: boolean;
+  role: Role;
   userId?: string;
   email?: string;
 }
@@ -82,18 +133,21 @@ export interface AdminCheckResult {
 export async function checkIsAdmin(): Promise<AdminCheckResult> {
   try {
     const user = await currentUser();
-    if (!user) return { isAdmin: false };
+    if (!user) return { isAdmin: false, role: "USER" };
 
     const primaryEmail =
       user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId)
         ?.emailAddress ?? user.emailAddresses[0]?.emailAddress;
 
     const allEmails = user.emailAddresses.map((e) => e.emailAddress);
-    const isAdmin = allEmails.some((email) => isSuperAdminEmail(email));
+    const primaryOrWhitelisted = allEmails.find((e) => isSuperAdminEmail(e)) || primaryEmail;
 
-    return { isAdmin, userId: user.id, email: primaryEmail };
+    const role = await getUserRole(user.id, primaryOrWhitelisted);
+    const isAdmin = role === "SUPER_ADMIN";
+
+    return { isAdmin, role, userId: user.id, email: primaryEmail };
   } catch {
-    return { isAdmin: false };
+    return { isAdmin: false, role: "USER" };
   }
 }
 
@@ -102,12 +156,12 @@ export async function checkIsAdmin(): Promise<AdminCheckResult> {
  * THROWS with UNAUTHORIZED_ADMIN error code if not an admin.
  * Use this at the top of every admin server action.
  */
-export async function requireAdmin(): Promise<{ userId: string; email: string }> {
-  const { isAdmin, userId, email } = await checkIsAdmin();
+export async function requireAdmin(): Promise<{ userId: string; email: string; role: Role }> {
+  const { isAdmin, role, userId, email } = await checkIsAdmin();
   if (!isAdmin || !userId) {
     throw new Error("UNAUTHORIZED_ADMIN");
   }
-  return { userId, email: email ?? "" };
+  return { userId, email: email ?? "", role };
 }
 
 /**
@@ -115,27 +169,21 @@ export async function requireAdmin(): Promise<{ userId: string; email: string }>
  * REDIRECTS to /dashboard with a 403 flash if not an admin.
  * Call at the top of any admin page that needs protection beyond the layout gate.
  */
-export async function requireAdminPage(): Promise<{ userId: string; email: string }> {
-  const { isAdmin, userId, email } = await checkIsAdmin();
+export async function requireAdminPage(): Promise<{ userId: string; email: string; role: Role }> {
+  const { isAdmin, role, userId, email } = await checkIsAdmin();
   if (!isAdmin || !userId) {
     redirect("/dashboard");
   }
-  return { userId, email: email ?? "" };
+  return { userId, email: email ?? "", role };
 }
 
 // ─── User Ownership Check ─────────────────────────────────────────────────────
 
-/**
- * Asserts that the authenticated user owns the given resource (by ownerId).
- * Admin users bypass ownership — they can access any resource.
- * Returns true if allowed, false if denied.
- */
 export async function canAccessResource(resourceOwnerId: string): Promise<boolean> {
   const userId = await getAuthenticatedUserId();
   if (!userId) return false;
   if (userId === resourceOwnerId) return true;
 
-  // Admins bypass ownership
   const { isAdmin } = await checkIsAdmin();
   return isAdmin;
 }
