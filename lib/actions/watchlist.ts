@@ -38,6 +38,11 @@ export async function joinWatchlistAction(
           status: "active",
         },
       });
+    } else if (existing.status === "unsubscribed") {
+      await prisma.watchlist.update({
+        where: { email: cleanEmail },
+        data: { status: "active" },
+      });
     }
 
     await logAuditEventAction({
@@ -52,6 +57,7 @@ export async function joinWatchlistAction(
       try {
         const resend = new Resend(resendApiKey);
         const fromEmail = process.env.CONTACT_FORM_FROM_EMAIL || "onboarding@resend.dev";
+        const unsubscribeUrl = `https://forgeflow.warishlabs.in/api/unsubscribe?email=${encodeURIComponent(cleanEmail)}`;
         await resend.emails.send({
           from: fromEmail,
           to: cleanEmail,
@@ -78,6 +84,9 @@ export async function joinWatchlistAction(
               <p style="font-size: 11px; color: #5c6980; text-align: center; margin: 0;">
                 ForgeFlow AI Platform · Persistent Software Architecture State Management
               </p>
+              <p style="font-size: 11px; color: #5c6980; text-align: center; margin-top: 12px;">
+                No longer want to receive update emails? <a href="${unsubscribeUrl}" style="color: #38b6ff; text-decoration: underline;">Unsubscribe from waitlist</a>
+              </p>
             </div>
           `,
         });
@@ -88,7 +97,7 @@ export async function joinWatchlistAction(
 
     return {
       success: true,
-      message: existing
+      message: existing && existing.status === "active"
         ? "You are already on our priority waitlist!"
         : "Successfully joined the priority waitlist! Check your inbox for confirmation.",
     };

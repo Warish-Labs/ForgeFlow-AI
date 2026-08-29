@@ -28,18 +28,18 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
     where: { ownerId: userId },
   });
 
-  // Calculate calendar month start
+  // Calculate daily 24-hour UTC reset window
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+  const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
 
-  // Aggregate AI Usage
+  // Aggregate AI Usage today
   const usageAggregate = await prisma.aiUsageLog.aggregate({
     where: {
       userId,
       createdAt: {
-        gte: startOfMonth,
-        lte: endOfMonth,
+        gte: startOfToday,
+        lte: endOfToday,
       },
     },
     _sum: {
@@ -68,13 +68,8 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
     status = "warning";
   }
 
-  // Next month reset date format (e.g., "1st of next month")
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const resetDate = nextMonth.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  // Daily reset format matching Groq provider cadence
+  const resetDate = "Daily at 00:00 UTC";
 
   const { isAdmin } = await checkIsSuperAdminAction();
 
@@ -140,7 +135,7 @@ export async function checkUserAiQuotaAction(userId: string) {
       allowed: false,
       error: {
         code: ERROR_CODES.FREE_AI_QUOTA_EXCEEDED,
-        message: `Monthly free AI quota limit reached (${usage.maxTokens.toLocaleString()} tokens / ${usage.maxRequests} requests). Quota resets on ${usage.resetDate}.`,
+        message: `Daily free AI quota limit reached (${usage.maxTokens.toLocaleString()} tokens / ${usage.maxRequests} requests per day). Quota resets daily at 00:00 UTC.`,
       },
     };
   }

@@ -37,7 +37,7 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
                 Account AI Usage & Plan Limits
               </CardTitle>
               <p className="text-[11px] text-[#9aa4b8]">
-                Server-enforced monthly quota & tenant bounds
+                Server-enforced daily quota & tenant bounds
               </p>
             </div>
           </div>
@@ -138,7 +138,7 @@ export function UsageDashboardCard({ usage }: UsageDashboardCardProps) {
                 />
               </div>
               <p className="text-[10px] text-[#5c6980]">
-                Monthly reset on {usage.resetDate}
+                Reset window: {usage.resetDate}
               </p>
             </div>
           </div>

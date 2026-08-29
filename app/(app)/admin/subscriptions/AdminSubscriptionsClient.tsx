@@ -46,6 +46,7 @@ export function AdminSubscriptionsClient({ subscribers }: { subscribers: Watchli
             <thead>
               <tr className="border-b border-[#1b2338] text-[#5c6980] font-mono">
                 <th className="pb-2.5 font-normal">Email</th>
+                <th className="pb-2.5 font-normal">Account Type</th>
                 <th className="pb-2.5 font-normal">Source</th>
                 <th className="pb-2.5 font-normal">Status</th>
                 <th className="pb-2.5 font-normal">Joined</th>
@@ -53,10 +54,21 @@ export function AdminSubscriptionsClient({ subscribers }: { subscribers: Watchli
             </thead>
             <tbody className="divide-y divide-[#1b2338]/60">
               {filtered.length === 0 ? (
-                <tr><td colSpan={4} className="py-6 text-center text-[#5c6980]">No subscribers match your filter.</td></tr>
+                <tr><td colSpan={5} className="py-6 text-center text-[#5c6980]">No subscribers match your filter.</td></tr>
               ) : filtered.map((s) => (
                 <tr key={s.id} className="hover:bg-[#131a2c]/50">
                   <td className="py-2.5 font-mono text-[11px] text-[#38b6ff]">{s.email}</td>
+                  <td className="py-2.5">
+                    {s.isRegisteredUser ? (
+                      <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-[#38b6ff]/30 text-[#38b6ff] bg-[#1060ee]/10">
+                        REGISTERED USER
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-[#5c6980]/30 text-[#9aa4b8] bg-[#070a14]">
+                        ANONYMOUS
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 font-mono text-[11px] text-[#9aa4b8]">{s.source}</td>
                   <td className="py-2.5">
                     <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border ${s.status === "active" ? "text-[#2fe6b0] bg-[#2fe6b0]/10 border-[#2fe6b0]/30" : "text-rose-400 bg-rose-500/10 border-rose-500/30"}`}>

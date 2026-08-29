@@ -113,11 +113,19 @@ export async function sendAdminCustomEmailAction({
     await Promise.all(
       chunk.map(async (recipient) => {
         try {
+          const unsubscribeUrl = `https://forgeflow.warishlabs.in/api/unsubscribe?email=${encodeURIComponent(recipient)}`;
+          const finalHtml = `${htmlContent}
+            <br/>
+            <hr style="border:0;border-top:1px solid #1b2338;margin:24px 0;"/>
+            <p style="font-size:11px;color:#5c6980;text-align:center;font-family:sans-serif;">
+              You received this update from ForgeFlow AI. <a href="${unsubscribeUrl}" style="color:#38b6ff;text-decoration:underline;">Unsubscribe from future mailings</a>
+            </p>`;
+
           const response = await resend.emails.send({
             from: fromEmail,
             to: recipient,
             subject: subject.trim(),
-            html: htmlContent,
+            html: finalHtml,
           });
 
           if (response.error) {

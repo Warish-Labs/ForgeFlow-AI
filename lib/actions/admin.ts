@@ -29,6 +29,7 @@ export interface WatchlistSubscriberInfo {
   email: string;
   source: string;
   status: string;
+  isRegisteredUser: boolean;
   createdAt: string;
 }
 
@@ -181,11 +182,16 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       watchlistEntries = await prisma.watchlist.findMany({ orderBy: { createdAt: "desc" } });
     } catch (_) {}
 
+    const registeredUserEmails = new Set(
+      userTable.map((u) => u.email.trim().toLowerCase()).filter((e) => Boolean(e))
+    );
+
     const watchlistSubscribers: WatchlistSubscriberInfo[] = watchlistEntries.map((w) => ({
       id: w.id,
       email: w.email,
       source: w.source,
       status: w.status,
+      isRegisteredUser: registeredUserEmails.has(w.email.trim().toLowerCase()),
       createdAt: new Date(w.createdAt).toLocaleString(),
     }));
 
