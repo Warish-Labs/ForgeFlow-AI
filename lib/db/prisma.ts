@@ -12,11 +12,9 @@ if (globalForPrisma.prisma && !("watchlist" in globalForPrisma.prisma)) {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL || "postgresql://postgres:Warish%40786@localhost:5433/forgeflow",
-      },
-    },
+    ...(process.env.DATABASE_URL
+      ? { datasources: { db: { url: process.env.DATABASE_URL } } }
+      : {}),
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]

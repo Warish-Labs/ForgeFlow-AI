@@ -82,7 +82,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       totalProjects, totalLogs, successfulLogs, failedRequests,
       totalTokensAgg, todayAgg, monthAgg,
       providerGroups, operationGroups, modelGroups,
-      userProjectsGroup, userUsageGroup,
+      userProjectsGroup, userUsageGroup, userDocumentsGroup,
       totalDocuments, totalContactMessages, dbUsers,
     ] = await Promise.all([
       prisma.project.count(),
@@ -97,6 +97,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       prisma.aiUsageLog.groupBy({ by: ["model", "provider"], _sum: { totalTokens: true }, _count: { id: true } }),
       prisma.project.groupBy({ by: ["ownerId"], _count: { id: true } }),
       prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
+      prisma.document.groupBy({ by: ["ownerId"], _count: { id: true } }).catch(() => []),
       prisma.document.count(),
       prisma.contactMessage.count({ where: { isDeleted: false } }),
       prisma.user.findMany({ select: { id: true, email: true, role: true, createdAt: true } }).catch(() => []),
@@ -109,6 +110,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
     dbUsers.forEach((u) => u.id && allUserIdsSet.add(u.id));
     userProjectsGroup.forEach((u) => u.ownerId && allUserIdsSet.add(u.ownerId));
     userUsageGroup.forEach((u) => u.userId && allUserIdsSet.add(u.userId));
+    userDocumentsGroup.forEach((u) => u.ownerId && allUserIdsSet.add(u.ownerId));
 
     // Fetch all Clerk users directly to capture newly registered accounts
     const clerkUsers: Record<string, AdminUserInfo> = {};
@@ -139,11 +141,13 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
     const userTable = allUserIds.map((uId) => {
       const proj = userProjectsGroup.find((p) => p.ownerId === uId);
       const usage = userUsageGroup.find((u) => u.userId === uId);
+      const docGroup = userDocumentsGroup.find((d) => d.ownerId === uId);
       const dbUser = dbUserMap.get(uId);
       const clerk = clerkUsers[uId];
 
-      const email = clerk?.email || dbUser?.email || "";
-      const isSuperAdmin = dbUser?.role === "SUPER_ADMIN" || (email && ["warishlabs@gmail.com", "warishdeveloper@gmail.com", "admin@warishlabs.in"].includes(email.toLowerCase()));
+      const isDemoOwner = uId === "user_2demo_forgeflow_owner_001";
+      const email = isDemoOwner ? "demo@forgeflow.ai" : (clerk?.email || dbUser?.email || "");
+      const isSuperAdmin = !isDemoOwner && (dbUser?.role === "SUPER_ADMIN" || (email && ["warishlabs@gmail.com", "warishdeveloper@gmail.com", "admin@warishlabs.in"].includes(email.toLowerCase())));
 
       const tokensUsed = usage?._sum.totalTokens || 0;
       const remainingTokens = Math.max(0, maxTokens - tokensUsed);
@@ -155,14 +159,14 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
 
       return {
         userId: uId,
-        fullName: clerk?.fullName || (email ? email.split("@")[0] : uId.substring(0, 14) + "..."),
+        fullName: isDemoOwner ? "Demo Owner (System)" : (clerk?.fullName || (email ? email.split("@")[0] : uId.substring(0, 14) + "...")),
         email,
         imageUrl: clerk?.imageUrl || "",
         role: (isSuperAdmin ? "SUPER_ADMIN" : "USER") as "SUPER_ADMIN" | "USER",
-        createdAt: dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString() : "N/A",
+        createdAt: isDemoOwner ? "System" : (dbUser?.createdAt ? new Date(dbUser.createdAt).toLocaleDateString() : "N/A"),
         plan: isSuperAdmin ? "ADMIN" : "FREE",
         projectsCount: proj?._count.id || 0,
-        documentsCount: 0,
+        documentsCount: docGroup?._count.id || 0,
         tokensUsed,
         remainingTokens,
         requestsCount: usage?._count.id || 0,
@@ -442,12 +446,38 @@ const ModelPricingSchema = z.object({
 });
 
 export async function getModelPricingAction() {
-  await requireAdmin();
+  const { userId: adminId } = await requireAdmin();
 
   try {
-    const pricing = await prisma.modelPricing.findMany({
+    let pricing = await prisma.modelPricing.findMany({
       orderBy: { effectiveFrom: "desc" },
     });
+
+    if (pricing.length === 0) {
+      // Auto-initialize default model rates
+      await prisma.modelPricing.createMany({
+        data: [
+          {
+            provider: "groq",
+            model: "llama-3.3-70b-versatile",
+            inputPricePer1mTokens: 0.15,
+            outputPricePer1mTokens: 0.60,
+            createdByAdminId: adminId || "system",
+          },
+          {
+            provider: "gemini",
+            model: "gemini-2.5-flash",
+            inputPricePer1mTokens: 0.075,
+            outputPricePer1mTokens: 0.30,
+            createdByAdminId: adminId || "system",
+          },
+        ],
+      }).catch(() => {});
+
+      pricing = await prisma.modelPricing.findMany({
+        orderBy: { effectiveFrom: "desc" },
+      });
+    }
 
     return pricing.map((p) => ({
       id: p.id,
