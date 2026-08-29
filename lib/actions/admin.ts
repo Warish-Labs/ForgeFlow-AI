@@ -67,140 +67,155 @@ export interface AdminMetricsResult {
 export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
   const { userId: adminUserId } = await requireAdmin();
   if (adminUserId) {
-    await logAuditEventAction({ userId: adminUserId, action: "ADMIN_ACCESS", metadata: { page: "/admin" } });
+    await logAuditEventAction({ userId: adminUserId, action: "ADMIN_ACCESS", metadata: { page: "/admin" } }).catch(() => {});
   }
 
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const [
-    totalProjects, totalLogs, successfulLogs, failedRequests,
-    totalTokensAgg, todayAgg, monthAgg,
-    providerGroups, operationGroups, modelGroups,
-    userProjectsGroup, userUsageGroup,
-    totalDocuments, totalContactMessages,
-  ] = await Promise.all([
-    prisma.project.count(),
-    prisma.aiUsageLog.count(),
-    prisma.aiUsageLog.count({ where: { status: "success" } }),
-    prisma.aiUsageLog.count({ where: { status: { in: ["error", "quota_exceeded"] } } }),
-    prisma.aiUsageLog.aggregate({ _sum: { totalTokens: true } }),
-    prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfToday } }, _sum: { totalTokens: true }, _count: { id: true } }),
-    prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfMonth } }, _sum: { totalTokens: true }, _count: { id: true } }),
-    prisma.aiUsageLog.groupBy({ by: ["provider"], _sum: { totalTokens: true }, _count: { id: true } }),
-    prisma.aiUsageLog.groupBy({ by: ["operation"], _sum: { totalTokens: true }, _count: { id: true } }),
-    prisma.aiUsageLog.groupBy({ by: ["model", "provider"], _sum: { totalTokens: true }, _count: { id: true } }),
-    prisma.project.groupBy({ by: ["ownerId"], _count: { id: true } }),
-    prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
-    prisma.document.count(),
-    prisma.contactMessage.count({ where: { isDeleted: false } }),
-  ]);
-
-  const successRatePercent = totalLogs > 0 ? Math.round((successfulLogs / totalLogs) * 100) : 100;
-  const totalTokens = totalTokensAgg._sum.totalTokens || 0;
-
-  const allUserIds = Array.from(new Set([
-    ...userProjectsGroup.map((u) => u.ownerId),
-    ...userUsageGroup.map((u) => u.userId),
-  ])).filter((id): id is string => Boolean(id));
-
-  const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
-
-  // Fetch Clerk user info
-  const clerkUsers: Record<string, AdminUserInfo> = {};
-  if (allUserIds.length > 0) {
-    try {
-      const client = await clerkClient();
-      const { data: users } = await client.users.getUserList({ userId: allUserIds, limit: 100 });
-      for (const u of users) {
-        clerkUsers[u.id] = {
-          userId: u.id,
-          fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") ||
-            u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
-          email: u.emailAddresses[0]?.emailAddress || "",
-          imageUrl: u.imageUrl || "",
-        };
-      }
-    } catch (_) {}
-  }
-
-  const userTable = allUserIds.map((uId) => {
-    const proj = userProjectsGroup.find((p) => p.ownerId === uId);
-    const usage = userUsageGroup.find((u) => u.userId === uId);
-    const tokensUsed = usage?._sum.totalTokens || 0;
-    const remainingTokens = Math.max(0, maxTokens - tokensUsed);
-    const percent = (tokensUsed / maxTokens) * 100;
-    let status: "healthy" | "warning" | "critical" | "exhausted" = "healthy";
-    if (tokensUsed >= maxTokens) status = "exhausted";
-    else if (percent >= 90) status = "critical";
-    else if (percent >= 75) status = "warning";
-    const clerk = clerkUsers[uId];
-    return {
-      userId: uId,
-      fullName: clerk?.fullName || uId.substring(0, 14) + "...",
-      email: clerk?.email || "",
-      imageUrl: clerk?.imageUrl || "",
-      plan: "FREE", projectsCount: proj?._count.id || 0, tokensUsed, remainingTokens,
-      requestsCount: usage?._count.id || 0,
-      lastActive: usage?._max.createdAt ? new Date(usage._max.createdAt).toLocaleString() : "N/A",
-      status,
-    };
-  });
-
-  // Watchlist (defensive — model exists now)
-  let watchlistEntries: Array<{ id: string; email: string; source: string; status: string; createdAt: Date }> = [];
   try {
-    watchlistEntries = await prisma.watchlist.findMany({ orderBy: { createdAt: "desc" } });
-  } catch (_) {}
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const watchlistSubscribers: WatchlistSubscriberInfo[] = watchlistEntries.map((w) => ({
-    id: w.id,
-    email: w.email,
-    source: w.source,
-    status: w.status,
-    createdAt: new Date(w.createdAt).toLocaleString(),
-  }));
+    const [
+      totalProjects, totalLogs, successfulLogs, failedRequests,
+      totalTokensAgg, todayAgg, monthAgg,
+      providerGroups, operationGroups, modelGroups,
+      userProjectsGroup, userUsageGroup,
+      totalDocuments, totalContactMessages,
+    ] = await Promise.all([
+      prisma.project.count(),
+      prisma.aiUsageLog.count(),
+      prisma.aiUsageLog.count({ where: { status: "success" } }),
+      prisma.aiUsageLog.count({ where: { status: { in: ["error", "quota_exceeded"] } } }),
+      prisma.aiUsageLog.aggregate({ _sum: { totalTokens: true } }),
+      prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfToday } }, _sum: { totalTokens: true }, _count: { id: true } }),
+      prisma.aiUsageLog.aggregate({ where: { createdAt: { gte: startOfMonth } }, _sum: { totalTokens: true }, _count: { id: true } }),
+      prisma.aiUsageLog.groupBy({ by: ["provider"], _sum: { totalTokens: true }, _count: { id: true } }),
+      prisma.aiUsageLog.groupBy({ by: ["operation"], _sum: { totalTokens: true }, _count: { id: true } }),
+      prisma.aiUsageLog.groupBy({ by: ["model", "provider"], _sum: { totalTokens: true }, _count: { id: true } }),
+      prisma.project.groupBy({ by: ["ownerId"], _count: { id: true } }),
+      prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
+      prisma.document.count(),
+      prisma.contactMessage.count({ where: { isDeleted: false } }),
+    ]);
 
-  const logs = await prisma.aiUsageLog.findMany({ take: 50, orderBy: { createdAt: "desc" } });
-  const recentLogs = logs.map((l) => ({
-    id: l.id, userId: l.userId, projectId: l.projectId, operation: l.operation,
-    provider: l.provider, model: l.model, totalTokens: l.totalTokens,
-    durationMs: l.durationMs, status: l.status,
-    createdAt: new Date(l.createdAt).toLocaleString(),
-  }));
+    const successRatePercent = totalLogs > 0 ? Math.round((successfulLogs / totalLogs) * 100) : 100;
+    const totalTokens = totalTokensAgg._sum.totalTokens || 0;
 
-  const auditEntries = await prisma.auditLog.findMany({ take: 30, orderBy: { createdAt: "desc" } });
-  const auditLogs = auditEntries.map((a) => ({
-    id: a.id, userId: a.userId, projectId: a.projectId, action: a.action,
-    metadata: JSON.parse(JSON.stringify(a.metadata || {})),
-    createdAt: new Date(a.createdAt).toLocaleString(),
-  }));
+    const allUserIds = Array.from(new Set([
+      ...userProjectsGroup.map((u) => u.ownerId),
+      ...userUsageGroup.map((u) => u.userId),
+    ])).filter((id): id is string => Boolean(id));
 
-  return {
-    overview: {
-      totalUsers: allUserIds.length,
-      totalProjects,
-      totalTokens,
-      tokensToday: todayAgg._sum.totalTokens || 0,
-      tokensThisMonth: monthAgg._sum.totalTokens || 0,
-      totalRequests: totalLogs,
-      requestsToday: todayAgg._count.id || 0,
-      requestsThisMonth: monthAgg._count.id || 0,
-      successRatePercent,
-      failedRequests,
-      totalWatchlistSubscribers: watchlistEntries.length,
-      totalDocuments,
-      totalContactMessages,
-    },
-    providers: providerGroups.map((g) => ({ provider: g.provider, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
-    operations: operationGroups.map((g) => ({ operation: g.operation, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
-    models: modelGroups.map((g) => ({ model: g.model || "default", provider: g.provider, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
-    userTable,
-    recentLogs,
-    auditLogs,
-    watchlistSubscribers,
-  };
+    const maxTokens = PLAN_LIMITS.FREE.aiTokenLimit;
+
+    // Fetch Clerk user info — filter to valid Clerk user IDs only (starts with user_)
+    const clerkUsers: Record<string, AdminUserInfo> = {};
+    const validClerkUserIds = allUserIds.filter((id) => id.startsWith("user_"));
+    if (validClerkUserIds.length > 0) {
+      try {
+        const client = await clerkClient();
+        const res = await client.users.getUserList({ userId: validClerkUserIds, limit: 100 });
+        const users = Array.isArray(res) ? res : (res?.data ?? []);
+        for (const u of users) {
+          clerkUsers[u.id] = {
+            userId: u.id,
+            fullName: [u.firstName, u.lastName].filter(Boolean).join(" ") ||
+              u.emailAddresses[0]?.emailAddress?.split("@")[0] || u.id.substring(0, 12),
+            email: u.emailAddresses[0]?.emailAddress || "",
+            imageUrl: u.imageUrl || "",
+          };
+        }
+      } catch (err) {
+        console.error("[getAdminMetricsAction] Clerk getUserList error:", err);
+      }
+    }
+
+    const userTable = allUserIds.map((uId) => {
+      const proj = userProjectsGroup.find((p) => p.ownerId === uId);
+      const usage = userUsageGroup.find((u) => u.userId === uId);
+      const tokensUsed = usage?._sum.totalTokens || 0;
+      const remainingTokens = Math.max(0, maxTokens - tokensUsed);
+      const percent = (tokensUsed / maxTokens) * 100;
+      let status: "healthy" | "warning" | "critical" | "exhausted" = "healthy";
+      if (tokensUsed >= maxTokens) status = "exhausted";
+      else if (percent >= 90) status = "critical";
+      else if (percent >= 75) status = "warning";
+      const clerk = clerkUsers[uId];
+      return {
+        userId: uId,
+        fullName: clerk?.fullName || uId.substring(0, 14) + "...",
+        email: clerk?.email || "",
+        imageUrl: clerk?.imageUrl || "",
+        plan: "FREE", projectsCount: proj?._count.id || 0, tokensUsed, remainingTokens,
+        requestsCount: usage?._count.id || 0,
+        lastActive: usage?._max.createdAt ? new Date(usage._max.createdAt).toLocaleString() : "N/A",
+        status,
+      };
+    });
+
+    let watchlistEntries: Array<{ id: string; email: string; source: string; status: string; createdAt: Date }> = [];
+    try {
+      watchlistEntries = await prisma.watchlist.findMany({ orderBy: { createdAt: "desc" } });
+    } catch (_) {}
+
+    const watchlistSubscribers: WatchlistSubscriberInfo[] = watchlistEntries.map((w) => ({
+      id: w.id,
+      email: w.email,
+      source: w.source,
+      status: w.status,
+      createdAt: new Date(w.createdAt).toLocaleString(),
+    }));
+
+    const logs = await prisma.aiUsageLog.findMany({ take: 50, orderBy: { createdAt: "desc" } });
+    const recentLogs = logs.map((l) => ({
+      id: l.id, userId: l.userId, projectId: l.projectId, operation: l.operation,
+      provider: l.provider, model: l.model, totalTokens: l.totalTokens,
+      durationMs: l.durationMs, status: l.status,
+      createdAt: new Date(l.createdAt).toLocaleString(),
+    }));
+
+    const auditEntries = await prisma.auditLog.findMany({ take: 30, orderBy: { createdAt: "desc" } });
+    const auditLogs = auditEntries.map((a) => ({
+      id: a.id, userId: a.userId, projectId: a.projectId, action: a.action,
+      metadata: JSON.parse(JSON.stringify(a.metadata || {})),
+      createdAt: new Date(a.createdAt).toLocaleString(),
+    }));
+
+    return {
+      overview: {
+        totalUsers: allUserIds.length,
+        totalProjects,
+        totalTokens,
+        tokensToday: todayAgg._sum.totalTokens || 0,
+        tokensThisMonth: monthAgg._sum.totalTokens || 0,
+        totalRequests: totalLogs,
+        requestsToday: todayAgg._count.id || 0,
+        requestsThisMonth: monthAgg._count.id || 0,
+        successRatePercent,
+        failedRequests,
+        totalWatchlistSubscribers: watchlistEntries.length,
+        totalDocuments,
+        totalContactMessages,
+      },
+      providers: providerGroups.map((g) => ({ provider: g.provider, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
+      operations: operationGroups.map((g) => ({ operation: g.operation, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
+      models: modelGroups.map((g) => ({ model: g.model || "default", provider: g.provider, totalTokens: g._sum.totalTokens || 0, totalRequests: g._count.id })),
+      userTable,
+      recentLogs,
+      auditLogs,
+      watchlistSubscribers,
+    };
+  } catch (err) {
+    console.error("[getAdminMetricsAction] Unhandled error while computing admin metrics:", err);
+    return {
+      overview: {
+        totalUsers: 0, totalProjects: 0, totalTokens: 0, tokensToday: 0, tokensThisMonth: 0,
+        totalRequests: 0, requestsToday: 0, requestsThisMonth: 0, successRatePercent: 100,
+        failedRequests: 0, totalWatchlistSubscribers: 0, totalDocuments: 0, totalContactMessages: 0,
+      },
+      providers: [], operations: [], models: [], userTable: [], recentLogs: [], auditLogs: [], watchlistSubscribers: [],
+    };
+  }
 }
 
 // ─── User Detail ──────────────────────────────────────────────────────────────
