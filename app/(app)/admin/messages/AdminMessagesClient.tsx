@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ContactMessageWithReplies,
   markMessageReadAction,
@@ -21,6 +22,7 @@ interface AdminMessagesClientProps {
 }
 
 export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProps) {
+  const router = useRouter();
   const [messages, setMessages] = useState<ContactMessageWithReplies[]>(initialMessages);
   const [selectedId, setSelectedId] = useState<string | null>(messages[0]?.id ?? null);
   const [search, setSearch] = useState("");
@@ -55,6 +57,7 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
       setMessages((prev) =>
         prev.map((item) => (item.id === msg.id ? { ...item, isRead: true } : item))
       );
+      router.refresh();
     }
   }
 
@@ -64,6 +67,7 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
     setMessages((prev) =>
       prev.map((item) => (item.id === msg.id ? { ...item, isRead: newStatus } : item))
     );
+    router.refresh();
   }
 
   async function handleConfirmArchive() {
@@ -75,6 +79,7 @@ export function AdminMessagesClient({ initialMessages }: AdminMessagesClientProp
         const remaining = messages.filter((m) => m.id !== confirmArchiveId);
         setMessages(remaining);
         if (selectedId === confirmArchiveId) setSelectedId(remaining[0]?.id ?? null);
+        router.refresh();
       }
     } finally {
       setIsArchiving(false);

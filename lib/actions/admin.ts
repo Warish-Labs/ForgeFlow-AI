@@ -7,8 +7,9 @@
  * Never relies on UI hiding for security — every function enforces admin check server-side.
  */
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-import { requireAdmin } from "@/lib/auth/guard";
+import { requireAdmin, isSuperAdminEmail } from "@/lib/auth/guard";
 import { ERROR_CODES, PLAN_LIMITS } from "@/lib/config/plans";
 import { logAuditEventAction } from "@/lib/services/audit";
 import { clerkClient } from "@clerk/nextjs/server";
@@ -147,7 +148,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
 
       const isDemoOwner = uId === "user_2demo_forgeflow_owner_001";
       const email = isDemoOwner ? "demo@forgeflow.ai" : (clerk?.email || dbUser?.email || "");
-      const isSuperAdmin = !isDemoOwner && (dbUser?.role === "SUPER_ADMIN" || (email && ["warishlabs@gmail.com", "warishdeveloper@gmail.com", "admin@warishlabs.in"].includes(email.toLowerCase())));
+      const isSuperAdmin = !isDemoOwner && (dbUser?.role === "SUPER_ADMIN" || isSuperAdminEmail(email));
 
       const tokensUsed = usage?._sum.totalTokens || 0;
       const remainingTokens = Math.max(0, maxTokens - tokensUsed);
@@ -531,3 +532,145 @@ export async function upsertModelPricingAction(input: {
     return { success: false, message: "Failed to save pricing." };
   }
 }
+
+// ─── Admin Full Entity CRUD Operations ───────────────────────────────────────────
+
+export async function deleteUserAdminAction(targetUserId: string): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  if (!targetUserId || targetUserId === adminId) {
+    return { success: false, message: "Invalid target user or self-deletion prohibited." };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Delete user's projects and logs
+      await tx.aiUsageLog.deleteMany({ where: { userId: targetUserId } });
+      await tx.auditLog.deleteMany({ where: { userId: targetUserId } });
+      await tx.project.deleteMany({ where: { ownerId: targetUserId } });
+      await tx.user.deleteMany({ where: { id: targetUserId } });
+    });
+
+    // Attempt Clerk user ban / deletion gracefully
+    try {
+      const client = await clerkClient();
+      await client.users.deleteUser(targetUserId).catch(() => {});
+    } catch (_) {}
+
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: { action: "USER_DELETED", targetUserId, performedBy: adminEmail },
+    });
+
+    revalidatePath("/admin");
+    return { success: true, message: `User ${targetUserId} and all associated data deleted successfully.` };
+  } catch (err: any) {
+    console.error("[deleteUserAdminAction] Error:", err);
+    return { success: false, message: err?.message || "Failed to delete user." };
+  }
+}
+
+export async function updateUserRoleAdminAction(
+  targetUserId: string,
+  newRole: "USER" | "SUPER_ADMIN"
+): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  if (!targetUserId || (newRole !== "USER" && newRole !== "SUPER_ADMIN")) {
+    return { success: false, message: "Invalid role payload." };
+  }
+
+  try {
+    await prisma.user.upsert({
+      where: { id: targetUserId },
+      update: { role: newRole },
+      create: { id: targetUserId, email: `${targetUserId}@placeholder.internal`, role: newRole },
+    });
+
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: { action: "USER_ROLE_UPDATED", targetUserId, newRole, performedBy: adminEmail },
+    });
+
+    revalidatePath("/admin");
+    return { success: true, message: `Updated user role to ${newRole}.` };
+  } catch (err: any) {
+    console.error("[updateUserRoleAdminAction] Error:", err);
+    return { success: false, message: "Failed to update user role." };
+  }
+}
+
+export async function deleteProjectAdminAction(projectId: string): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  if (!projectId) {
+    return { success: false, message: "Project ID required." };
+  }
+
+  try {
+    await prisma.project.delete({ where: { id: projectId } });
+
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: { action: "PROJECT_DELETED_BY_ADMIN", projectId, performedBy: adminEmail },
+    });
+
+    revalidatePath("/admin");
+    return { success: true, message: `Project ${projectId} deleted.` };
+  } catch (err: any) {
+    console.error("[deleteProjectAdminAction] Error:", err);
+    return { success: false, message: "Failed to delete project." };
+  }
+}
+
+export async function deleteDocumentAdminAction(documentId: string): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  if (!documentId) {
+    return { success: false, message: "Document ID required." };
+  }
+
+  try {
+    await prisma.document.delete({ where: { id: documentId } });
+
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: { action: "DOCUMENT_DELETED_BY_ADMIN", documentId, performedBy: adminEmail },
+    });
+
+    revalidatePath("/admin");
+    return { success: true, message: `Document ${documentId} deleted.` };
+  } catch (err: any) {
+    console.error("[deleteDocumentAdminAction] Error:", err);
+    return { success: false, message: "Failed to delete document." };
+  }
+}
+
+export async function deleteWatchlistSubscriberAction(subscriberId: string): Promise<{ success: boolean; message: string }> {
+  const { userId: adminId, email: adminEmail } = await requireAdmin();
+
+  if (!subscriberId) {
+    return { success: false, message: "Subscriber ID required." };
+  }
+
+  try {
+    await prisma.watchlist.delete({ where: { id: subscriberId } });
+
+    await logAuditEventAction({
+      userId: adminId,
+      action: "ADMIN_ACTION",
+      metadata: { action: "WATCHLIST_SUBSCRIBER_DELETED", subscriberId, performedBy: adminEmail },
+    });
+
+    revalidatePath("/admin");
+    return { success: true, message: "Watchlist subscriber deleted." };
+  } catch (err: any) {
+    console.error("[deleteWatchlistSubscriberAction] Error:", err);
+    return { success: false, message: "Failed to delete watchlist subscriber." };
+  }
+}
+

@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { getAdminDocumentsAction } from "@/lib/actions/admin";
+import { getAdminDocumentsAction, deleteDocumentAdminAction } from "@/lib/actions/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormattedMarkdown } from "@/components/ui/FormattedMarkdown";
-import { FileTextIcon, SearchIcon, EyeIcon, XIcon } from "lucide-react";
+import { FileTextIcon, SearchIcon, EyeIcon, XIcon, Trash2Icon, Loader2Icon, AlertTriangleIcon } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 
 interface AdminDocumentsClientProps {
   documents: Awaited<ReturnType<typeof getAdminDocumentsAction>>;
 }
 
-export function AdminDocumentsClient({ documents }: AdminDocumentsClientProps) {
+export function AdminDocumentsClient({ documents: initialDocs }: AdminDocumentsClientProps) {
+  const [documents, setDocuments] = useState(initialDocs);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [selectedDoc, setSelectedDoc] = useState<(typeof documents)[number] | null>(null);
+  const [deleteDocTarget, setDeleteDocTarget] = useState<(typeof documents)[number] | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filtered = documents.filter((d) => {
     const matchSearch =
@@ -26,6 +29,24 @@ export function AdminDocumentsClient({ documents }: AdminDocumentsClientProps) {
   });
 
   const types = Array.from(new Set(documents.map((d) => d.type)));
+
+  async function handleDeleteDocument() {
+    if (!deleteDocTarget) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteDocumentAdminAction(deleteDocTarget.id);
+      if (res.success) {
+        setDocuments((prev) => prev.filter((doc) => doc.id !== deleteDocTarget.id));
+        setDeleteDocTarget(null);
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to delete document.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -103,12 +124,19 @@ export function AdminDocumentsClient({ documents }: AdminDocumentsClientProps) {
                       </span>
                     </td>
                     <td className="py-2.5 font-mono text-[11px] text-[#9aa4b8]">{d.createdAt}</td>
-                    <td className="py-2.5">
+                    <td className="py-2.5 flex items-center gap-1.5">
                       <button
                         onClick={() => setSelectedDoc(d)}
                         className="inline-flex items-center gap-1 rounded bg-[#131a2c] border border-[#1b2338] px-2.5 py-1 text-[11px] text-[#38b6ff] hover:bg-[#1060ee] hover:text-white transition-all"
                       >
                         <EyeIcon className="h-3 w-3" /> View Spec
+                      </button>
+                      <button
+                        onClick={() => setDeleteDocTarget(d)}
+                        className="inline-flex items-center gap-1 rounded bg-rose-500/10 border border-rose-500/30 px-2 py-1 text-[11px] text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
+                        title="Delete Document Spec"
+                      >
+                        <Trash2Icon className="h-3 w-3" />
                       </button>
                     </td>
                   </tr>
@@ -142,6 +170,45 @@ export function AdminDocumentsClient({ documents }: AdminDocumentsClientProps) {
                 </div>
               </>
             )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Delete Document Confirmation Dialog */}
+      <Dialog.Root open={!!deleteDocTarget} onOpenChange={(o) => !o && setDeleteDocTarget(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" />
+          <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-md translate-x-[-50%] translate-y-[-50%] border border-rose-500/40 bg-[#070a14] text-[#f3f6fc] p-6 shadow-2xl rounded-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/30">
+                <AlertTriangleIcon className="h-6 w-6" />
+              </div>
+              <div>
+                <Dialog.Title className="text-base font-bold text-[#f3f6fc]">
+                  Confirm Document Deletion
+                </Dialog.Title>
+                <p className="text-xs text-[#9aa4b8]">
+                  Are you sure you want to permanently delete document <strong className="text-[#f3f6fc]">{deleteDocTarget?.title}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setDeleteDocTarget(null)}
+                className="px-4 py-2 rounded-xl border border-[#1b2338] bg-[#0d1220] text-xs font-semibold text-[#9aa4b8] hover:text-[#f3f6fc]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteDocument}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 text-xs font-bold text-white hover:bg-rose-700 transition-all disabled:opacity-50"
+              >
+                {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <Trash2Icon className="h-4 w-4" />}
+                Confirm Delete
+              </button>
+            </div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

@@ -3,11 +3,41 @@
 import { useState } from "react";
 import { getModelPricingAction, upsertModelPricingAction } from "@/lib/actions/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SettingsIcon, DollarSignIcon, PlusIcon, Loader2Icon, CheckCircle2Icon, AlertCircleIcon } from "lucide-react";
+import { SettingsIcon, DollarSignIcon, PlusIcon, Loader2Icon, CheckCircle2Icon, AlertCircleIcon, RefreshCwIcon, CpuIcon, LayersIcon } from "lucide-react";
 
 interface AdminSettingsClientProps {
   pricings: Awaited<ReturnType<typeof getModelPricingAction>>;
 }
+
+const STATIC_MODEL_METADATA = [
+  {
+    provider: "groq",
+    model: "llama-3.3-70b-versatile",
+    displayName: "Groq Llama 3.3 70B Versatile",
+    contextWindow: "128,000 tokens",
+    rateLimit: "30 RPM / 6,000 TPM",
+    role: "Primary Synthesis & Blueprint Engine",
+    status: "active",
+  },
+  {
+    provider: "gemini",
+    model: "gemini-2.5-flash",
+    displayName: "Google Gemini 2.5 Flash",
+    contextWindow: "1,048,576 tokens",
+    rateLimit: "15 RPM / 1,000,000 TPM",
+    role: "Secondary Fallback & Multimodal Analysis",
+    status: "active",
+  },
+  {
+    provider: "google",
+    model: "text-embedding-004",
+    displayName: "Google Text Embedding 004",
+    contextWindow: "8,192 tokens",
+    rateLimit: "1,500 RPM / 10,000,000 TPM",
+    role: "Vector Knowledge & Semantic RAG Search",
+    status: "active",
+  },
+];
 
 export function AdminSettingsClient({ pricings: initialPricings }: AdminSettingsClientProps) {
   const [pricings, setPricings] = useState(initialPricings);
@@ -18,6 +48,8 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
   const [inputPrice, setInputPrice] = useState("0.15");
   const [outputPrice, setOutputPrice] = useState("0.60");
   const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastChecked, setLastChecked] = useState<string>(new Date().toLocaleTimeString());
   const [status, setStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   async function handleSavePricing(e: React.FormEvent) {
@@ -36,9 +68,21 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
     setIsSaving(false);
 
     if (res.success) {
-      // Refresh pricing list locally
       const updated = await getModelPricingAction();
       setPricings(updated);
+      setLastChecked(new Date().toLocaleTimeString());
+    }
+  }
+
+  async function handleRefreshTelemetry() {
+    setIsRefreshing(true);
+    try {
+      const updated = await getModelPricingAction();
+      setPricings(updated);
+      setLastChecked(new Date().toLocaleTimeString());
+    } catch (_) {
+    } finally {
+      setIsRefreshing(false);
     }
   }
 
@@ -91,47 +135,85 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
                 Analyze operational telemetry: LLM provider distributions (Groq vs Gemini), model breakdowns, operation types, and latency metrics.
               </p>
             </div>
-
-            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
-              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
-                5. System & Audit Logs
-              </span>
-              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
-                Switch between System Telemetry / Execution Traces and Governance Audit Logs (role updates, bans, pricing changes).
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
-              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
-                6. Documents Registry
-              </span>
-              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
-                Inspect generated architecture specs across all tenants with creator name resolution and user ID tooltip inspection.
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
-              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
-                7. Support Inbox
-              </span>
-              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
-                Read contact submissions, toggle read/unread status, dispatch direct email replies via Resend, and archive messages with confirmation.
-              </p>
-            </div>
-
-            <div className="p-3.5 rounded-xl border border-[#1b2338] bg-[#070a14] space-y-1">
-              <span className="font-bold text-[#38b6ff] flex items-center gap-1.5 font-mono text-[11px]">
-                8. Settings & Pricing
-              </span>
-              <p className="text-[#9aa4b8] text-[11px] leading-relaxed">
-                Configure baseline $/1M input/output token pricing rates per LLM provider to calculate accurate platform expenditure.
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Model Pricing Config */}
+      {/* Model Capabilities & Token Context Window Telemetry */}
+      <Card className="border-[#1b2338] bg-[#0d1220]">
+        <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-bold text-[#f3f6fc] flex items-center gap-2">
+              <CpuIcon className="h-4 w-4 text-[#38b6ff]" /> AI Provider Limits & Technical Reference
+            </CardTitle>
+            <p className="text-[11px] text-[#9aa4b8] mt-0.5">
+              Live context windows, tier rate limits, and platform operational roles across connected LLM engines.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono text-[#5c6980]">
+              Last Checked: <strong className="text-[#38b6ff]">{lastChecked}</strong>
+            </span>
+            <button
+              onClick={handleRefreshTelemetry}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#1b2338] bg-[#070a14] px-2.5 py-1 text-[11px] font-mono text-[#38b6ff] hover:bg-[#131a2c] transition-all disabled:opacity-50"
+            >
+              <RefreshCwIcon className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} /> Refresh
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {STATIC_MODEL_METADATA.map((m) => {
+              const matchedPricing = pricings.find((p) => p.model === m.model);
+              return (
+                <div key={m.model} className="rounded-xl border border-[#1b2338] bg-[#070a14] p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] uppercase font-bold text-[#38b6ff] px-2 py-0.5 rounded bg-[#1060ee]/15 border border-[#1060ee]/30">
+                      {m.provider}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" /> {m.status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-[#f3f6fc]">{m.displayName}</h4>
+                    <p className="text-[10px] text-[#9aa4b8] mt-0.5">{m.role}</p>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2 border-t border-[#1b2338] text-[11px] font-mono">
+                    <div className="flex justify-between text-[#9aa4b8]">
+                      <span>Context Window:</span>
+                      <span className="text-[#f3f6fc] font-semibold">{m.contextWindow}</span>
+                    </div>
+                    <div className="flex justify-between text-[#9aa4b8]">
+                      <span>Rate Limits:</span>
+                      <span className="text-[#38b6ff] font-semibold">{m.rateLimit}</span>
+                    </div>
+                    <div className="flex justify-between text-[#9aa4b8]">
+                      <span>Input $/1M Tokens:</span>
+                      <span className="text-emerald-400 font-semibold">
+                        ${matchedPricing ? matchedPricing.inputPricePer1mTokens.toFixed(3) : "0.150"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-[#9aa4b8]">
+                      <span>Output $/1M Tokens:</span>
+                      <span className="text-amber-400 font-semibold">
+                        ${matchedPricing ? matchedPricing.outputPricePer1mTokens.toFixed(3) : "0.600"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Model Pricing Config Form */}
       <Card className="border-[#1b2338] bg-[#0d1220]">
         <CardHeader className="p-5 pb-3">
           <CardTitle className="text-sm font-bold text-[#f3f6fc] flex items-center gap-2">
@@ -174,7 +256,7 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
               <label className="text-[10px] font-mono text-[#9aa4b8]">Input $/1M Tokens</label>
               <input
                 type="number"
-                step="0.01"
+                step="0.001"
                 value={inputPrice}
                 onChange={(e) => setInputPrice(e.target.value)}
                 className="w-full rounded-lg border border-[#1b2338] bg-[#0d1220] px-3 py-1.5 text-xs text-[#f3f6fc] focus:border-[#38b6ff] focus:outline-none font-mono"
@@ -185,7 +267,7 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
               <label className="text-[10px] font-mono text-[#9aa4b8]">Output $/1M Tokens</label>
               <input
                 type="number"
-                step="0.01"
+                step="0.001"
                 value={outputPrice}
                 onChange={(e) => setOutputPrice(e.target.value)}
                 className="w-full rounded-lg border border-[#1b2338] bg-[#0d1220] px-3 py-1.5 text-xs text-[#f3f6fc] focus:border-[#38b6ff] focus:outline-none font-mono"
@@ -228,8 +310,8 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
                     <tr key={p.id} className="hover:bg-[#131a2c]/50">
                       <td className="py-2.5 font-mono text-[11px] text-[#38b6ff] uppercase">{p.provider}</td>
                       <td className="py-2.5 font-mono text-[11px] text-[#f3f6fc]">{p.model}</td>
-                      <td className="py-2.5 font-mono text-[#2fe6b0]">${p.inputPricePer1mTokens.toFixed(2)}</td>
-                      <td className="py-2.5 font-mono text-amber-400">${p.outputPricePer1mTokens.toFixed(2)}</td>
+                      <td className="py-2.5 font-mono text-[#2fe6b0]">${p.inputPricePer1mTokens.toFixed(3)}</td>
+                      <td className="py-2.5 font-mono text-amber-400">${p.outputPricePer1mTokens.toFixed(3)}</td>
                       <td className="py-2.5 font-mono text-[11px] text-[#9aa4b8]">{p.effectiveFrom}</td>
                     </tr>
                   ))

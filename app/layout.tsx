@@ -86,12 +86,45 @@ function isClerkKeyValid(key?: string): boolean {
   return trimmed.startsWith("pk_test_") || trimmed.startsWith("pk_live_");
 }
 
+import { dark } from "@clerk/themes";
+
+const clerkAppearance = {
+  baseTheme: dark,
+  variables: {
+    colorPrimary: "#1060ee",
+    colorBackground: "#0d1220",
+    colorInputBackground: "#070a14",
+    colorText: "#f3f6fc",
+    colorTextSecondary: "#9aa4b8",
+    colorInputText: "#f3f6fc",
+    borderRadius: "0.75rem",
+  },
+  elements: {
+    card: "bg-[#0d1220] border border-[#1b2338] shadow-2xl text-[#f3f6fc]",
+    headerTitle: "text-[#f3f6fc]",
+    headerSubtitle: "text-[#9aa4b8]",
+    socialButtonsBlockButton:
+      "border border-[#1b2338] bg-[#070a14] text-[#f3f6fc] hover:bg-[#131a2c]",
+    formFieldInput:
+      "bg-[#070a14] border-[#1b2338] text-[#f3f6fc] focus:border-[#1060ee]",
+    formButtonPrimary:
+      "bg-[#1060ee] hover:bg-[#0a2a9c] text-white font-semibold transition-all",
+    footerActionLink: "text-[#38b6ff] hover:text-[#1060ee]",
+    modalBackdrop: "bg-black/80 backdrop-blur-sm",
+    popoverBox: "bg-[#0d1220] border border-[#1b2338] shadow-2xl",
+    userButtonPopoverCard: "bg-[#0d1220] border border-[#1b2338]",
+    userButtonPopoverActionButton: "hover:bg-[#131a2c] text-[#f3f6fc]",
+    userButtonPopoverActionButtonText: "text-[#f3f6fc]",
+    userButtonPopoverFooter: "border-t border-[#1b2338]",
+  },
+};
+
 function AppClerkProvider({ children }: { children: React.ReactNode }) {
   const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   if (!isClerkKeyValid(key)) {
     return <>{children}</>;
   }
-  return <ClerkProvider>{children}</ClerkProvider>;
+  return <ClerkProvider appearance={clerkAppearance}>{children}</ClerkProvider>;
 }
 
 export default function RootLayout({
