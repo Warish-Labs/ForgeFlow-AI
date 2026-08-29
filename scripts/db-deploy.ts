@@ -63,6 +63,7 @@ async function runDeploy() {
   }
 
   console.log("🚀 Running database migrations...");
+
   try {
     const output = execSync("npx prisma migrate deploy", {
       encoding: "utf-8",
@@ -72,17 +73,50 @@ async function runDeploy() {
     console.log(sanitizeText(output));
     console.log("✅ Database migrations applied successfully.");
   } catch (error: any) {
-    console.error("❌ Prisma migration failed!");
-    if (error.stdout) {
-      console.error("📋 Prisma Migration STDOUT:\n" + sanitizeText(error.stdout.toString()));
+    const errOutput = (error.stdout || "") + "\n" + (error.stderr || "") + "\n" + (error.message || "");
+    const sanitizedErrOutput = sanitizeText(errOutput);
+
+    // Detect P3009 error indicating a previously failed migration record in _prisma_migrations
+    if (sanitizedErrOutput.includes("P3009") || sanitizedErrOutput.includes("migrate found failed migrations")) {
+      console.warn("⚠️ Detected failed migration record in database (P3009). Attempting automatic resolution...");
+
+      // Extract failed migration name from error log if possible, defaulting to migration 2
+      const match = sanitizedErrOutput.match(/The `([^`]+)` migration started at/);
+      const failedMigration = match ? match[1] : "20260828000000_add_contact_and_pricing_models";
+
+      console.log(`🔧 Marking failed migration '${failedMigration}' as rolled back to allow clean retry...`);
+
+      try {
+        const resolveOutput = execSync(`npx prisma migrate resolve --rolled-back "${failedMigration}"`, {
+          encoding: "utf-8",
+          env: process.env,
+          stdio: "pipe",
+        });
+        console.log(sanitizeText(resolveOutput));
+        console.log(`✅ Successfully marked '${failedMigration}' as rolled back.`);
+
+        console.log("🔄 Retrying database migration deployment...");
+        const retryOutput = execSync("npx prisma migrate deploy", {
+          encoding: "utf-8",
+          env: process.env,
+          stdio: "pipe",
+        });
+        console.log(sanitizeText(retryOutput));
+        console.log("✅ Database migrations applied successfully on retry.");
+      } catch (resolveError: any) {
+        console.error("❌ Migration resolution/retry failed!");
+        if (resolveError.stdout) console.error("📋 STDOUT:\n" + sanitizeText(resolveError.stdout.toString()));
+        if (resolveError.stderr) console.error("🚨 STDERR:\n" + sanitizeText(resolveError.stderr.toString()));
+        if (resolveError.message) console.error("💥 Error Message:\n" + sanitizeText(resolveError.message));
+        process.exit(1);
+      }
+    } else {
+      console.error("❌ Prisma migration failed!");
+      if (error.stdout) console.error("📋 STDOUT:\n" + sanitizeText(error.stdout.toString()));
+      if (error.stderr) console.error("🚨 STDERR:\n" + sanitizeText(error.stderr.toString()));
+      if (error.message) console.error("💥 Error Message:\n" + sanitizeText(error.message));
+      process.exit(1);
     }
-    if (error.stderr) {
-      console.error("🚨 Prisma Migration STDERR:\n" + sanitizeText(error.stderr.toString()));
-    }
-    if (error.message) {
-      console.error("💥 Execution Error Message:\n" + sanitizeText(error.message));
-    }
-    process.exit(1);
   }
 
   const prisma = new PrismaClient();
