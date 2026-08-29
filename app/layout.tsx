@@ -79,13 +79,28 @@ export const metadata: Metadata = {
   },
 };
 
+function isClerkKeyValid(key?: string): boolean {
+  if (!key || typeof key !== "string") return false;
+  if (key.includes("placeholder") || key.includes("ci_")) return false;
+  if (!key.startsWith("pk_test_") && !key.startsWith("pk_live_")) return false;
+  return key.includes("$");
+}
+
+function AppClerkProvider({ children }: { children: React.ReactNode }) {
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!isClerkKeyValid(key)) {
+    return <>{children}</>;
+  }
+  return <ClerkProvider>{children}</ClerkProvider>;
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <AppClerkProvider>
       <html
         lang="en"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
@@ -109,6 +124,7 @@ export default function RootLayout({
           {children}
         </body>
       </html>
-    </ClerkProvider>
+    </AppClerkProvider>
   );
 }
+

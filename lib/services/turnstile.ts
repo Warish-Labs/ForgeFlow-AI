@@ -10,12 +10,9 @@ export async function verifyTurnstileToken(
 ): Promise<boolean> {
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
 
-  // Auto-pass in development, test mode, or if secret key is unconfigured / dummy test key
+  // Auto-pass in development, test mode, or if secret key is unconfigured
   if (
     !secretKey ||
-    secretKey === "0x4AAAAAAAAAAAAAAAAAAAAAAAAA" ||
-    secretKey.startsWith("0x4") ||
-    secretKey.startsWith("1x") ||
     token === "dev-bypass-token" ||
     token === "bypass-token" ||
     process.env.NODE_ENV === "development"
