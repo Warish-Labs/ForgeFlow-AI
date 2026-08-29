@@ -8,7 +8,15 @@ import { Logo } from "@/components/shared/Logo";
 import { PremiumComingSoonModal } from "@/components/ui/PremiumComingSoonModal";
 
 export function Navbar() {
-  const { userId } = useAuth();
+  let userId: string | null = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const auth = useAuth();
+    userId = auth.userId ?? null;
+  } catch {
+    userId = null;
+  }
+
   const [isPremiumOpen, setIsPremiumOpen] = useState(false);
 
   return (

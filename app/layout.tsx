@@ -81,9 +81,9 @@ export const metadata: Metadata = {
 
 function isClerkKeyValid(key?: string): boolean {
   if (!key || typeof key !== "string") return false;
-  if (key.includes("placeholder") || key.includes("ci_")) return false;
-  if (!key.startsWith("pk_test_") && !key.startsWith("pk_live_")) return false;
-  return key.includes("$");
+  const trimmed = key.trim();
+  if (trimmed === "" || trimmed.includes("placeholder")) return false;
+  return trimmed.startsWith("pk_test_") || trimmed.startsWith("pk_live_");
 }
 
 function AppClerkProvider({ children }: { children: React.ReactNode }) {
