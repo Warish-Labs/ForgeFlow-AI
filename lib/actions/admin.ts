@@ -65,8 +65,6 @@ export interface AdminMetricsResult {
 // ─── Overview Metrics ─────────────────────────────────────────────────────────
 
 export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
-  await requireAdmin();
-
   const { userId: adminUserId } = await requireAdmin();
   if (adminUserId) {
     await logAuditEventAction({ userId: adminUserId, action: "ADMIN_ACCESS", metadata: { page: "/admin" } });
@@ -382,19 +380,24 @@ const ModelPricingSchema = z.object({
 export async function getModelPricingAction() {
   await requireAdmin();
 
-  const pricing = await prisma.modelPricing.findMany({
-    orderBy: { effectiveFrom: "desc" },
-  });
+  try {
+    const pricing = await prisma.modelPricing.findMany({
+      orderBy: { effectiveFrom: "desc" },
+    });
 
-  return pricing.map((p) => ({
-    id: p.id,
-    model: p.model,
-    provider: p.provider,
-    inputPricePer1mTokens: p.inputPricePer1mTokens,
-    outputPricePer1mTokens: p.outputPricePer1mTokens,
-    effectiveFrom: new Date(p.effectiveFrom).toLocaleString(),
-    createdAt: new Date(p.createdAt).toLocaleString(),
-  }));
+    return pricing.map((p) => ({
+      id: p.id,
+      model: p.model,
+      provider: p.provider,
+      inputPricePer1mTokens: p.inputPricePer1mTokens,
+      outputPricePer1mTokens: p.outputPricePer1mTokens,
+      effectiveFrom: new Date(p.effectiveFrom).toLocaleString(),
+      createdAt: new Date(p.createdAt).toLocaleString(),
+    }));
+  } catch (err) {
+    console.error("[getModelPricingAction] Error fetching pricing:", err);
+    return [];
+  }
 }
 
 export async function upsertModelPricingAction(input: {

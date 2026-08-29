@@ -63,8 +63,21 @@ export async function getUserRole(userId?: string | null, email?: string | null)
 
   try {
     const cleanEmail = email?.trim().toLowerCase();
+    const isWhitelisted = isSuperAdminEmail(email);
 
-    // 1. Query DB by userId or email
+    // 1. Whitelisted emails are ALWAYS SUPER_ADMIN
+    if (isWhitelisted) {
+      if (userId && cleanEmail) {
+        prisma.user.upsert({
+          where: { id: userId },
+          create: { id: userId, email: cleanEmail, role: "SUPER_ADMIN" },
+          update: { email: cleanEmail, role: "SUPER_ADMIN" },
+        }).catch((e) => console.error("[getUserRole] DB role sync failed:", e));
+      }
+      return "SUPER_ADMIN";
+    }
+
+    // 2. Query DB by userId or email
     const existing = await prisma.user.findFirst({
       where: {
         OR: [
@@ -78,27 +91,14 @@ export async function getUserRole(userId?: string | null, email?: string | null)
       return existing.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "USER";
     }
 
-    // 2. Not in DB yet — check whitelist
-    const isWhitelisted = isSuperAdminEmail(email);
-    const assignedRole: Role = isWhitelisted ? "SUPER_ADMIN" : "USER";
-
-    // 3. Provision in DB if userId and email are available
+    // 3. Non-whitelisted new user -> default USER
     if (userId && cleanEmail) {
-      await prisma.user.upsert({
-        where: { id: userId },
-        create: {
-          id: userId,
-          email: cleanEmail,
-          role: assignedRole,
-        },
-        update: {
-          email: cleanEmail,
-          ...(isWhitelisted ? { role: "SUPER_ADMIN" } : {}),
-        },
-      }).catch((e) => console.error("[getUserRole] DB upsert failed:", e));
+      prisma.user.create({
+        data: { id: userId, email: cleanEmail, role: "USER" },
+      }).catch((e) => console.error("[getUserRole] DB user creation failed:", e));
     }
 
-    return assignedRole;
+    return "USER";
   } catch (err) {
     console.error("[getUserRole] DB lookup error:", err);
     return isSuperAdminEmail(email) ? "SUPER_ADMIN" : "USER";
