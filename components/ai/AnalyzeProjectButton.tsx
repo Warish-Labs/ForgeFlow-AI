@@ -7,7 +7,7 @@ import { analyzeProjectAction, resumeProjectSynthesisAction } from "@/lib/action
 import { AskUserQuestionnaireModal } from "@/components/ai/AskUserQuestionnaireModal";
 import { QuestionItem } from "@/lib/validations/ai";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
-import { SparklesIcon, Loader2Icon } from "lucide-react";
+import { SparklesIcon, Loader2Icon, AlertCircleIcon, XIcon } from "lucide-react";
 
 interface AnalyzeProjectButtonProps {
   projectId: string;
@@ -25,6 +25,7 @@ export function AnalyzeProjectButton({
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stepText, setStepText] = useState("Analyze Vision");
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Ask-User Question Modal state
   const [pendingQuestions, setPendingQuestions] = useState<QuestionItem[] | null>(null);
@@ -32,6 +33,7 @@ export function AnalyzeProjectButton({
 
   async function handleAnalyze() {
     setIsAnalyzing(true);
+    setAnalysisError(null);
     setStepText("1/3 Evaluating Architecture Stack...");
 
     const t1 = setTimeout(() => setStepText("2/3 Synthesizing Dependencies..."), 1200);
@@ -43,7 +45,7 @@ export function AnalyzeProjectButton({
     setStepText("Analyze Vision");
 
     if (!result.success) {
-      alert(`AI Analysis Failed: ${result.error.message}`);
+      setAnalysisError(result.error.message);
       return;
     }
 
@@ -57,11 +59,12 @@ export function AnalyzeProjectButton({
 
   async function handleQuestionnaireSubmit(answers: Record<string, any>) {
     setIsSubmittingAnswers(true);
+    setAnalysisError(null);
     const result = await resumeProjectSynthesisAction(projectId, answers);
     setIsSubmittingAnswers(false);
 
     if (!result.success) {
-      alert(`Synthesis error: ${result.error.message}`);
+      setAnalysisError(result.error.message);
       return;
     }
 
@@ -75,7 +78,7 @@ export function AnalyzeProjectButton({
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-2 items-start">
       <div className="inline-flex items-center gap-1.5">
         <Button
           variant={variant}
@@ -109,6 +112,21 @@ export function AnalyzeProjectButton({
         )}
       </div>
 
+      {analysisError && (
+        <div className="my-1 rounded-xl border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-300 flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircleIcon className="h-4 w-4 text-rose-400 shrink-0" />
+            <span>AI Analysis Diagnostic: {analysisError}</span>
+          </div>
+          <button
+            onClick={() => setAnalysisError(null)}
+            className="text-rose-400 hover:text-white"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {pendingQuestions && (
         <AskUserQuestionnaireModal
           isOpen={Boolean(pendingQuestions)}
@@ -117,6 +135,6 @@ export function AnalyzeProjectButton({
           isSubmitting={isSubmittingAnswers}
         />
       )}
-    </>
+    </div>
   );
 }

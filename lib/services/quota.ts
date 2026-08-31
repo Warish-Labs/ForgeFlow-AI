@@ -201,7 +201,7 @@ export async function checkUserTavilyQuotaAction(userId: string) {
 export async function logAiUsageAction(params: {
   userId: string;
   projectId?: string | null;
-  operation: "chat" | "analyze" | "architecture" | "roadmap" | "document" | "web_search";
+  operation: "chat" | "analyze" | "architecture" | "roadmap" | "document" | "design" | "web_search";
   provider: "groq" | "gemini" | "tavily";
   model?: string;
   promptTokens?: number;

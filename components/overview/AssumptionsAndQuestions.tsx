@@ -17,24 +17,9 @@ export function AssumptionsAndQuestions({
   initialAssumptions = [],
   initialQuestions = [],
 }: AssumptionsAndQuestionsProps) {
-  const [assumptions, setAssumptions] = useState<string[]>(
-    initialAssumptions.length > 0
-      ? initialAssumptions
-      : [
-          "PostgreSQL will serve as the primary relational database.",
-          "Authentication will leverage Clerk single-tenant identity tokens.",
-          "MVP release prioritizes web dashboard features before native mobile APIs.",
-        ]
-  );
+  const [assumptions, setAssumptions] = useState<string[]>(initialAssumptions);
   const [newAssumption, setNewAssumption] = useState("");
-  const [questions, setQuestions] = useState<Array<{ question: string; answer: string }>>(
-    initialQuestions.length > 0
-      ? initialQuestions
-      : [
-          { question: "Is real-time data streaming required for this project?", answer: "" },
-          { question: "What is the targeted concurrency load for MVP?", answer: "" },
-        ]
-  );
+  const [questions, setQuestions] = useState<Array<{ question: string; answer: string }>>(initialQuestions);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -96,23 +81,29 @@ export function AssumptionsAndQuestions({
           {feedback && <span className="text-xs font-mono text-emerald-400">{feedback}</span>}
         </div>
 
-        <ul className="space-y-2 text-xs">
-          {assumptions.map((item, idx) => (
-            <li
-              key={idx}
-              className="group flex items-start justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/60 p-2 text.text-[var(--text-secondary)]"
-            >
-              <span className="leading-relaxed text-[var(--text-primary)]">• {item}</span>
-              <button
-                onClick={() => handleRemoveAssumption(idx)}
-                className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 transition-opacity shrink-0"
-                title="Remove assumption"
+        {assumptions.length === 0 ? (
+          <p className="text-xs text-[var(--text-muted)] italic py-2">
+            No confirmed assumptions recorded yet. Click Add to create one.
+          </p>
+        ) : (
+          <ul className="space-y-2 text-xs">
+            {assumptions.map((item, idx) => (
+              <li
+                key={idx}
+                className="group flex items-start justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/60 p-2 text.text-[var(--text-secondary)]"
               >
-                <Trash2Icon className="h-3.5 w-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
+                <span className="leading-relaxed text-[var(--text-primary)]">• {item}</span>
+                <button
+                  onClick={() => handleRemoveAssumption(idx)}
+                  className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 transition-opacity shrink-0"
+                  title="Remove assumption"
+                >
+                  <Trash2Icon className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
 
         <div className="flex items-center gap-2 pt-1">
           <input
@@ -142,27 +133,35 @@ export function AssumptionsAndQuestions({
               text="Questions identified by AI analysis. Providing answers refines AI Copilot responses and document specs."
             />
           </div>
-          <Button type="button" variant="ghost" size="sm" onClick={handleSaveAnswers} disabled={isSaving}>
-            Save Answers
-          </Button>
+          {questions.length > 0 && (
+            <Button type="button" variant="ghost" size="sm" onClick={handleSaveAnswers} disabled={isSaving}>
+              Save Answers
+            </Button>
+          )}
         </div>
 
-        <div className="space-y-3 text-xs">
-          {questions.map((q, idx) => (
-            <div key={idx} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/60 p-3 space-y-1.5">
-              <p className="font-medium text-[var(--text-primary)]">
-                Q{idx + 1}: {q.question}
-              </p>
-              <input
-                type="text"
-                value={q.answer}
-                onChange={(e) => handleAnswerChange(idx, e.target.value)}
-                placeholder="Type your answer here..."
-                className="w-full rounded border border-[var(--border-default)] bg-[var(--navy-900)] px-2.5 py-1 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--accent-cyan)] focus:outline-none"
-              />
-            </div>
-          ))}
-        </div>
+        {questions.length === 0 ? (
+          <p className="text-xs text-[var(--text-muted)] italic py-2">
+            No additional technical clarification questions required for this project.
+          </p>
+        ) : (
+          <div className="space-y-3 text-xs">
+            {questions.map((q, idx) => (
+              <div key={idx} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/60 p-3 space-y-1.5">
+                <p className="font-medium text-[var(--text-primary)]">
+                  Q{idx + 1}: {q.question}
+                </p>
+                <input
+                  type="text"
+                  value={q.answer}
+                  onChange={(e) => handleAnswerChange(idx, e.target.value)}
+                  placeholder="Type your answer here..."
+                  className="w-full rounded border border-[var(--border-default)] bg-[var(--navy-900)] px-2.5 py-1 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--accent-cyan)] focus:outline-none"
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

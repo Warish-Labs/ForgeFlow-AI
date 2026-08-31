@@ -588,3 +588,59 @@ export async function acceptProposalAction(
     return { success: false, error: { code: "INTERNAL_ERROR", message: "Failed to apply proposal." } };
   }
 }
+
+export interface ChatMessageItem {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * Retrieve persistent chat session messages for a project (guarded by single-tenant ownership)
+ */
+export async function getChatHistoryAction(
+  projectId: string
+): Promise<ActionResult<ChatMessageItem[]>> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { success: false, error: { code: "UNAUTHORIZED", message: "Authentication required" } };
+  }
+
+  try {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, ownerId: userId },
+    });
+    if (!project) {
+      return { success: false, error: { code: "NOT_FOUND", message: "Project not found or access denied" } };
+    }
+
+    const session = await prisma.chatSession.findFirst({
+      where: { projectId },
+      include: { messages: { orderBy: { createdAt: "asc" } } },
+    });
+
+    if (!session || session.messages.length === 0) {
+      return {
+        success: true,
+        data: [
+          {
+            id: "welcome",
+            role: "assistant",
+            content: `Hello! I am **ForgeFlow Agent**, your AI agent for **${project.name}**.\n\nI can answer questions grounded in this project's stored state or propose technical stack and architecture updates.\n\nTry asking: *"change the stack from Next.js to React.js"* or *"how do I see the roadmap?"*`,
+          },
+        ],
+      };
+    }
+
+    const formattedMessages: ChatMessageItem[] = session.messages.map((m) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    }));
+
+    return { success: true, data: formattedMessages };
+  } catch (err: unknown) {
+    console.error("[AI] Error loading chat history:", err);
+    return { success: false, error: { code: "DB_ERROR", message: "Failed to load chat history" } };
+  }
+}
