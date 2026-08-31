@@ -20,7 +20,6 @@ export type Role = "SUPER_ADMIN" | "USER";
 
 const DEFAULT_ADMIN_EMAILS = [
   "warishlabs@gmail.com",
-  "warishdeveloper@gmail.com",
   "warishprojects@gmail.com",
   "admin@warishlabs.in",
   "warish@warishlabs.in",
@@ -28,20 +27,25 @@ const DEFAULT_ADMIN_EMAILS = [
 
 /**
  * Returns true if the provided email is in the admin whitelist.
- * Checks env vars ADMIN_EMAIL_1, ADMIN_EMAIL_2, and hardcoded defaults.
+ * Checks env vars ADMIN_EMAIL_1, ADMIN_EMAIL_2, and default admin emails.
  * Case-insensitive, trims whitespace.
  */
 export function isSuperAdminEmail(email?: string | null): boolean {
   if (!email) return false;
   const target = email.trim().toLowerCase();
 
-  const allowed = new Set<string>(DEFAULT_ADMIN_EMAILS.map((e) => e.toLowerCase()));
+  const allowed = new Set<string>();
 
+  // 1. First check env vars ADMIN_EMAIL_1 & ADMIN_EMAIL_2
   const env1 = process.env.ADMIN_EMAIL_1?.trim().toLowerCase();
   const env2 = process.env.ADMIN_EMAIL_2?.trim().toLowerCase();
   if (env1) allowed.add(env1);
   if (env2) allowed.add(env2);
 
+  // 2. Add default admin fallback emails
+  DEFAULT_ADMIN_EMAILS.forEach((e) => allowed.add(e.toLowerCase()));
+
+  // 3. Add comma-separated ADMIN_USER_IDS / emails
   const envIds = process.env.ADMIN_USER_IDS?.split(",") ?? [];
   for (const id of envIds) {
     const trimmed = id.trim().toLowerCase();

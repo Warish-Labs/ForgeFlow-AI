@@ -138,8 +138,8 @@ UPSTASH_REDIS_REST_URL=https://...upstash.io
 UPSTASH_REDIS_REST_TOKEN=...
 
 # Super Admin & Quotas
-ADMIN_EMAIL_1=warishdeveloper@gmail.com
-ADMIN_EMAIL_2=warishprojects@gmail.com
+ADMIN_EMAIL_1=warishprojects@gmail.com
+ADMIN_EMAIL_2=warishlabs@gmail.com
 FREE_MAX_PROJECTS=1
 FREE_AI_TOKEN_LIMIT=50000
 FREE_AI_REQUEST_LIMIT=50

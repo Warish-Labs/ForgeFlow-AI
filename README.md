@@ -197,7 +197,8 @@ GROQ_API_KEY=gsk_...
 GOOGLE_GENERATIVE_AI_API_KEY=AQ...
 TAVILY_API_KEY=tvly-...
 
-ADMIN_EMAIL_1="warishdeveloper@gmail.com"
+ADMIN_EMAIL_1="warishprojects@gmail.com"
+ADMIN_EMAIL_2="warishlabs@gmail.com"
 RESEND_API_KEY="re_..."
 RESEND_FROM_EMAIL="ForgeFlow AI <onboarding@resend.dev>"
 ```

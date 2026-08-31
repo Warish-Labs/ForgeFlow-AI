@@ -72,7 +72,7 @@ export async function submitContactMessageAction(data: {
   if (resendApiKey && resendApiKey !== "re_placeholder_key") {
     try {
       const resend = new Resend(resendApiKey);
-      const toEmail = process.env.CONTACT_FORM_TO_EMAIL || "warishdeveloper@gmail.com";
+      const toEmail = process.env.CONTACT_FORM_TO_EMAIL || process.env.ADMIN_EMAIL_1 || "warishprojects@gmail.com";
       const fromEmail = process.env.CONTACT_FORM_FROM_EMAIL || "onboarding@resend.dev";
 
       await resend.emails.send({

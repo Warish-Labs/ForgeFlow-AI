@@ -3,7 +3,10 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const DEMO_OWNER_ID = "user_2demo_forgeflow_owner_001";
-const ADMIN_USER_1 = "user_3IVGfowfj67zugZfceNoVTfBMU9"; // warishdeveloper@gmail.com
+const ADMIN_EMAIL_1_VAL = process.env.ADMIN_EMAIL_1 || "warishprojects@gmail.com";
+const ADMIN_EMAIL_2_VAL = process.env.ADMIN_EMAIL_2 || "warishlabs@gmail.com";
+
+const ADMIN_USER_1 = "user_3IVGfowfj67zugZfceNoVTfBMU9"; // warishprojects@gmail.com
 const ADMIN_USER_2 = "user_3IY1GP1VleXNQ0e4oePZWY6KPec"; // warishlabs@gmail.com
 const ADMIN_USER_3 = "user_3IUOqXgrlFU4KiKZxsSKlAtpsWi"; // warishansari018@gmail.com
 
@@ -14,14 +17,14 @@ async function main() {
   console.log("👤 Seeding Users...");
   await prisma.user.upsert({
     where: { id: ADMIN_USER_1 },
-    create: { id: ADMIN_USER_1, email: "warishdeveloper@gmail.com", role: "SUPER_ADMIN" },
-    update: { role: "SUPER_ADMIN" },
+    create: { id: ADMIN_USER_1, email: ADMIN_EMAIL_1_VAL, role: "SUPER_ADMIN" },
+    update: { role: "SUPER_ADMIN", email: ADMIN_EMAIL_1_VAL },
   });
 
   await prisma.user.upsert({
     where: { id: ADMIN_USER_2 },
-    create: { id: ADMIN_USER_2, email: "warishlabs@gmail.com", role: "SUPER_ADMIN" },
-    update: { role: "SUPER_ADMIN" },
+    create: { id: ADMIN_USER_2, email: ADMIN_EMAIL_2_VAL, role: "SUPER_ADMIN" },
+    update: { role: "SUPER_ADMIN", email: ADMIN_EMAIL_2_VAL },
   });
 
   await prisma.user.upsert({
@@ -354,7 +357,7 @@ async function main() {
         create: [
           {
             adminUserId: ADMIN_USER_1,
-            adminEmail: "warishdeveloper@gmail.com",
+            adminEmail: ADMIN_EMAIL_1_VAL,
             body: "Hi Elena,\n\nThank you for the wonderful feedback! Yes, draw.io XML export is currently on our Phase 2 roadmap.",
           },
         ],
