@@ -126,4 +126,48 @@ describe("AI Output Cleaning & Zod Schema Validation Guard", () => {
     expect(parsed.questions).toHaveLength(1);
     expect(parsed.questions[0].id).toBe("db_choice");
   });
+
+  it("should extract and validate target project features for database persistence", () => {
+    const rawSynthesisJson = `{
+      "problemStatement": "StudyPilot is an AI learning assistant that organizes study materials and automates flashcard creation.",
+      "suggestedStack": ["Next.js", "TypeScript", "PostgreSQL", "Prisma", "OpenAI"],
+      "functionalRequirements": ["Users can upload PDF study guides.", "AI generates interactive flashcards and quizzes."],
+      "nonFunctionalRequirements": ["Sub-200ms latency for flashcard generation."],
+      "extractedFeatures": [
+        {
+          "title": "PDF Document Ingestion & Text Extraction",
+          "description": "Parses PDF files and extracts raw study notes.",
+          "phase": "MVP",
+          "priority": "HIGH"
+        },
+        {
+          "title": "Automated Flashcard & Quiz Generator",
+          "description": "Generates spaced repetition study decks using LLM.",
+          "phase": "MVP",
+          "priority": "HIGH"
+        }
+      ]
+    }`;
+
+    const cleaned = cleanJsonText(rawSynthesisJson);
+    const parsed = JSON.parse(cleaned);
+    const validated = requirementSynthesisSchema.parse(parsed);
+
+    expect(validated.extractedFeatures).toHaveLength(2);
+    expect(validated.extractedFeatures[0].title).toBe("PDF Document Ingestion & Text Extraction");
+    expect(validated.extractedFeatures[1].title).toBe("Automated Flashcard & Quiz Generator");
+
+    // Test DB payload mapping
+    const dbFeatures = validated.extractedFeatures.map((feat) => ({
+      projectId: "test-proj",
+      title: feat.title,
+      description: feat.description || "",
+      phase: feat.phase || "MVP",
+      status: "planned",
+    }));
+
+    expect(dbFeatures).toHaveLength(2);
+    expect(dbFeatures[0].projectId).toBe("test-proj");
+    expect(dbFeatures[0].phase).toBe("MVP");
+  });
 });

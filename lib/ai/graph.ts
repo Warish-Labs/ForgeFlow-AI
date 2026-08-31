@@ -127,13 +127,14 @@ You are NOT restricted to what the user provided — the user's input is a start
 Analyze the given software vision and any user answers provided so far.
 
 INSTRUCTIONS:
-1. Examine the vision text for missing, ambiguous, or critical technical decisions (e.g. database choice for an ORM, real-time mechanism, auth provider, storage, scale assumptions).
-2. If there are genuine technical ambiguities that have NOT yet been answered by the user, return a JSON object with status "NEEDS_INPUT":
+1. Examine the vision text for missing, ambiguous, or critical technical decisions.
+2. STACK GROUNDING RULE: If the vision text or project input already explicitly specifies technology choices (e.g. Next.js, PostgreSQL, Prisma, Redis, Docker, OpenAI), HONOR those choices. Do NOT ask redundant clarification questions about choices already specified by the user.
+3. If there are genuine, unstated technical ambiguities that have NOT yet been answered by the user, return a JSON object with status "NEEDS_INPUT":
 {
   "status": "NEEDS_INPUT",
   "questions": [
     {
-      "id": "db_choice",
+      "id": "ambiguity_id",
       "type": "single_select",
       "prompt": "Clear question addressing the exact technical ambiguity in THIS project",
       "options": ["Option 1", "Option 2"],
@@ -142,7 +143,7 @@ INSTRUCTIONS:
   ]
 }
 
-3. If the user's input is ALREADY sufficient, OR if answers have resolved key ambiguities, return the finalized blueprint JSON with status "COMPLETED":
+4. If the user's input is ALREADY sufficient, OR if answers have resolved key ambiguities, return the finalized blueprint JSON with status "COMPLETED":
 {
   "status": "COMPLETED",
   "problemStatement": "Clear concise 1-2 sentence problem description tailored to this vision",

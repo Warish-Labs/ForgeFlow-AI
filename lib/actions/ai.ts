@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { createSynthesisGraph } from "@/lib/ai/graph";
-import { getLlmClient, invokeLlmWithFallback, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
+import { getLlmClient, invokeLlmWithFallback, logAiStage, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
 import { buildChatSystemPrompt } from "@/lib/ai/prompts/chat";
 import { searchTavily } from "@/lib/tools/tavily";
 import { checkUserAiQuotaAction, checkUserTavilyQuotaAction, logAiUsageAction } from "@/lib/services/quota";
@@ -136,15 +136,21 @@ export async function analyzeProjectAction(
       };
     }
 
+    logAiStage("AnalyzeVision", { step: "LLM_COMPLETED", status: stateResult.status });
+
     const synthesis = stateResult.result;
     if (!synthesis) {
+      logAiStage("AnalyzeVision", { step: "FAILED", stage: "response_parsing", reason: "empty_synthesis" });
       return {
         success: false,
         error: { code: "AI_ERROR", message: "AI synthesis failed to produce a valid blueprint" },
       };
     }
 
+    logAiStage("AnalyzeVision", { step: "DB_WRITE_STARTED", projectId });
+
     await prisma.$transaction(async (tx) => {
+      // 1. Update Project requirements, stack, problemStatement, and status
       await tx.project.update({
         where: { id: projectId },
         data: {
@@ -159,34 +165,50 @@ export async function analyzeProjectAction(
         },
       });
 
-      // Clear old generated records to avoid duplication on re-synthesis
+      logAiStage("AnalyzeVision", { step: "REQUIREMENTS_SAVED", functionalCount: synthesis.functionalRequirements.length });
+
+      // 2. Clear old generated features & decisions to avoid duplication on re-synthesis
       await tx.feature.deleteMany({ where: { projectId } });
       await tx.decision.deleteMany({ where: { projectId } });
 
-      if (synthesis.suggestedStack.length > 0) {
-        await tx.feature.createMany({
-          data: [
-            {
+      // 3. Persist synthesized features directly from LLM output
+      const featuresToCreate =
+        synthesis.extractedFeatures && synthesis.extractedFeatures.length > 0
+          ? synthesis.extractedFeatures.map((feat) => ({
               projectId,
-              title: "Core System Infrastructure & Authentication",
-              description: `Initial architecture stack setup with ${synthesis.suggestedStack.slice(0, 3).join(", ")}.`,
-              phase: "MVP",
+              title: feat.title,
+              description: feat.description || `Core requirement feature for ${feat.title}`,
+              phase: (feat.phase as any) || "MVP",
               status: "planned",
-            },
-            {
-              projectId,
-              title: "Primary Relational Data Schema",
-              description: "Database models, indexes, and single-tenant ownership constraints.",
-              phase: "MVP",
-              status: "planned",
-            },
-          ],
-        });
+            }))
+          : [
+              {
+                projectId,
+                title: "Core System Infrastructure & Authentication",
+                description: `Initial architecture stack setup with ${synthesis.suggestedStack.slice(0, 3).join(", ")}.`,
+                phase: "MVP",
+                status: "planned",
+              },
+              {
+                projectId,
+                title: "Primary Relational Data Schema",
+                description: "Database models, indexes, and single-tenant ownership constraints.",
+                phase: "MVP",
+                status: "planned",
+              },
+            ];
 
+      await tx.feature.createMany({
+        data: featuresToCreate,
+      });
+
+      logAiStage("AnalyzeVision", { step: "FEATURES_SAVED", count: featuresToCreate.length });
+
+      if (synthesis.suggestedStack.length > 0) {
         await tx.decision.create({
           data: {
             projectId,
-            decision: `Selected initial core stack: ${synthesis.suggestedStack.join(", ")}`,
+            decision: `Selected core technology stack: ${synthesis.suggestedStack.join(", ")}`,
             reasoning: "Chosen to maximize development velocity, maintainability, and data security.",
             alternative: "Monolithic framework",
             affectedAreas: ["Architecture", "Database", "Security"],
@@ -209,7 +231,16 @@ export async function analyzeProjectAction(
       status: "success",
     });
 
+    logAiStage("AnalyzeVision", { step: "REVALIDATION", projectId });
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}/requirements`);
+    revalidatePath(`/projects/${projectId}/features`);
+    revalidatePath(`/projects/${projectId}/architecture`);
+    revalidatePath(`/projects/${projectId}/documents`);
+    revalidatePath(`/projects/${projectId}/design`);
+    revalidatePath(`/projects/${projectId}/[tab]`, "page");
+
+    logAiStage("AnalyzeVision", { step: "DONE", projectId });
     return { success: true, data: { success: true, status: "COMPLETED" } };
   } catch (error: any) {
     console.error("[AI] Error in analyzeProjectAction:", error);
