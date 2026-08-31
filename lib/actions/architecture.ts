@@ -112,10 +112,15 @@ export async function generateArchitectureAction(
 
     return { success: true, data: { success: true } };
   } catch (error: any) {
-    console.error("Error in generateArchitectureAction:", error);
+    console.error("[AI] Error in generateArchitectureAction:", error);
+    const msg = error?.message || String(error);
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to generate system architecture" },
+      error: {
+        code: "AI_ARCHITECTURE_ERROR",
+        operation: "architecture",
+        message: msg.includes("Failed:") ? msg : `Failed to generate system architecture: ${msg}`,
+      },
     };
   }
 }

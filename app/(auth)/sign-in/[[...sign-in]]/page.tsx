@@ -15,6 +15,7 @@ export default function SignInPage() {
 
       <div className="relative z-10 w-full max-w-md px-4">
         <SignIn
+          fallbackRedirectUrl="/dashboard"
           appearance={{
             variables: {
               colorPrimary: "#1a6fff",

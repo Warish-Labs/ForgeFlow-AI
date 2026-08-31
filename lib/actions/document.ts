@@ -5,13 +5,13 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { logAuditEventAction } from "@/lib/services/audit";
-import { invokeLlmWithFallback, cleanJsonText, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
+import { invokeLlmWithFallback, cleanMarkdownText, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
 import { buildDocumentSystemPrompt } from "@/lib/ai/prompts/document";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 
 export type ActionResult<T> =
   | { success: true; data: T }
-  | { success: false; error: { code: string; message: string } };
+  | { success: false; error: { code: string; message: string; category?: string; operation?: string } };
 
 export type DocumentType =
   | "PRD"
@@ -102,7 +102,7 @@ export async function generateDocumentAction(
         ],
         { userId, projectId, operation: "document" }
       );
-      content = cleanJsonText(rawRes);
+      content = cleanMarkdownText(rawRes);
     } else {
       // Mock fallback for keyless offline environment
       content = `# ${title} — ${project.name}\n\n` +
@@ -166,8 +166,16 @@ export async function generateDocumentAction(
     revalidatePath(`/projects/${projectId}/documents`);
     return { success: true, data: { documentId: doc.id, content: doc.content } };
   } catch (error: any) {
-    console.error("Error in generateDocumentAction:", error);
-    return { success: false, error: { code: "INTERNAL_ERROR", message: "Failed to generate document" } };
+    console.error("[AI] Error in generateDocumentAction:", error);
+    const msg = error?.message || String(error);
+    return {
+      success: false,
+      error: {
+        code: "AI_DOCUMENT_ERROR",
+        operation: "document",
+        message: msg.includes("Failed:") ? msg : `Failed to generate document: ${msg}`,
+      },
+    };
   }
 }
 

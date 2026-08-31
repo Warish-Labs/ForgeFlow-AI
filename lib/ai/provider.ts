@@ -1,18 +1,69 @@
 import { ChatGroq } from "@langchain/groq";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { BaseMessage } from "@langchain/core/messages";
+import { BaseMessage, HumanMessage } from "@langchain/core/messages";
 import { logAiUsageAction } from "@/lib/services/quota";
 
 /**
-  * Cleans markdown code blocks (e.g. ```json ... ```) from LLM text responses
-  */
+ * Cleans markdown code blocks and extracts JSON payload from LLM text responses
+ */
 export function cleanJsonText(rawText: string): string {
+  if (!rawText) return "";
   let cleaned = rawText.trim();
-  if (cleaned.startsWith("```")) {
+
+  // Extract contents inside ```json ... ``` or ``` ... ``` if present
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch && codeBlockMatch[1]) {
+    cleaned = codeBlockMatch[1].trim();
+  }
+
+  // Trim leading/trailing commentary around JSON object or array
+  const firstObj = cleaned.indexOf("{");
+  const firstArr = cleaned.indexOf("[");
+  let startIdx = -1;
+  if (firstObj !== -1 && firstArr !== -1) {
+    startIdx = Math.min(firstObj, firstArr);
+  } else if (firstObj !== -1) {
+    startIdx = firstObj;
+  } else if (firstArr !== -1) {
+    startIdx = firstArr;
+  }
+
+  if (startIdx !== -1) {
+    const lastObj = cleaned.lastIndexOf("}");
+    const lastArr = cleaned.lastIndexOf("]");
+    const endIdx = Math.max(lastObj, lastArr);
+    if (endIdx > startIdx) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
+  }
+
+  return cleaned.trim();
+}
+
+/**
+ * Cleans markdown wrap (```markdown ... ```) without trimming inner text or markdown headers
+ */
+export function cleanMarkdownText(rawText: string): string {
+  if (!rawText) return "";
+  let cleaned = rawText.trim();
+  if (cleaned.startsWith("```markdown")) {
+    cleaned = cleaned.replace(/^```markdown\n?/i, "").replace(/\n?```$/i, "");
+  } else if (cleaned.startsWith("```")) {
     cleaned = cleaned.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "");
   }
   return cleaned.trim();
+}
+
+/**
+ * Safe structured server logging for AI stages (no secret credentials)
+ */
+export function logAiStage(stage: string, meta: Record<string, unknown>): void {
+  const metaStr = Object.entries(meta)
+    .filter(([key, v]) => Boolean(key) && v !== undefined && v !== null)
+    .map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
+    .join(" ");
+  console.log(`[AI] stage=${stage} ${metaStr}`);
 }
 
 /**
@@ -420,6 +471,53 @@ export function generateMockRoadmapSynthesis(projectName: string) {
       },
     ],
   };
+}
+
+export interface ProviderHealthReport {
+  groq: { status: "ok" | "error" | "missing_key"; model: string; message?: string };
+  gemini: { status: "ok" | "error" | "missing_key"; model: string; message?: string };
+  primary: "groq" | "gemini";
+}
+
+/**
+ * Independent runtime health check for Groq and Gemini providers
+ */
+export async function checkLlmProviderHealth(): Promise<ProviderHealthReport> {
+  const groqModel = getGroqModel();
+  const geminiModel = getGeminiModel();
+  const primary = getLlmProvider();
+
+  let groqResult: { status: "ok" | "error" | "missing_key"; model: string; message?: string } = {
+    status: process.env.GROQ_API_KEY ? "error" : "missing_key",
+    model: groqModel,
+  };
+
+  let geminiResult: { status: "ok" | "error" | "missing_key"; model: string; message?: string } = {
+    status: process.env.GOOGLE_GENERATIVE_AI_API_KEY ? "error" : "missing_key",
+    model: geminiModel,
+  };
+
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const res = await invokeGroq([new HumanMessage("Test health check response")]);
+      if (res) groqResult = { status: "ok", model: groqModel };
+    } catch (err: unknown) {
+      const classified = classifyLlmError(err);
+      groqResult = { status: "error", model: groqModel, message: `[${classified.category}] ${classified.message}` };
+    }
+  }
+
+  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    try {
+      const res = await invokeGemini([new HumanMessage("Test health check response")]);
+      if (res) geminiResult = { status: "ok", model: geminiModel };
+    } catch (err: unknown) {
+      const classified = classifyLlmError(err);
+      geminiResult = { status: "error", model: geminiModel, message: `[${classified.category}] ${classified.message}` };
+    }
+  }
+
+  return { groq: groqResult, gemini: geminiResult, primary };
 }
 
 

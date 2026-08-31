@@ -106,10 +106,15 @@ export async function generateRoadmapAction(
 
     return { success: true, data: { success: true } };
   } catch (error: any) {
-    console.error("Error in generateRoadmapAction:", error);
+    console.error("[AI] Error in generateRoadmapAction:", error);
+    const msg = error?.message || String(error);
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to generate roadmap milestones" },
+      error: {
+        code: "AI_ROADMAP_ERROR",
+        operation: "roadmap",
+        message: msg.includes("Failed:") ? msg : `Failed to generate roadmap milestones: ${msg}`,
+      },
     };
   }
 }

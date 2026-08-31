@@ -14,7 +14,7 @@ import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages
 
 export type ActionResult<T> =
   | { success: true; data: T }
-  | { success: false; error: { code: string; message: string } };
+  | { success: false; error: { code: string; message: string; category?: string; operation?: string } };
 
 export interface ProposalPayload {
   type: "STACK_CHANGE" | "REQUIREMENT_UPDATE" | "ROADMAP_UPDATE" | "GENERAL_UPDATE";
@@ -212,10 +212,15 @@ export async function analyzeProjectAction(
     revalidatePath(`/projects/${projectId}`);
     return { success: true, data: { success: true, status: "COMPLETED" } };
   } catch (error: any) {
-    console.error("Error in analyzeProjectAction:", error);
+    console.error("[AI] Error in analyzeProjectAction:", error);
+    const msg = error?.message || String(error);
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to analyze project. Please try again." },
+      error: {
+        code: "AI_ANALYSIS_ERROR",
+        operation: "analyze",
+        message: msg.includes("Failed:") ? msg : `Failed to analyze project: ${msg}`,
+      },
     };
   }
 }

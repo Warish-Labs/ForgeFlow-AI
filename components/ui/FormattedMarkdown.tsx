@@ -5,7 +5,9 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { ProposalCard } from "@/components/ai/ProposalCard";
 import { ClarificationModal } from "@/components/ai/ClarificationModal";
+import { PermissionRequestCard } from "@/components/ai/PermissionRequestCard";
 import { ProposalPayload } from "@/lib/actions/ai";
+import { PermissionRequestPayload } from "@/lib/ai/tools";
 import { InfoIcon, LightbulbIcon, AlertTriangleIcon, ShieldAlertIcon, CheckCircle2Icon } from "lucide-react";
 
 interface FormattedMarkdownProps {
@@ -22,6 +24,7 @@ export function FormattedMarkdown({
   onSendClarificationAnswer,
 }: FormattedMarkdownProps) {
   let proposalData: ProposalPayload | null = null;
+  let permissionData: PermissionRequestPayload | null = null;
   let clarificationData: { question: string; options?: string[] } | null = null;
   let markdownContent = content;
 
@@ -31,6 +34,9 @@ export function FormattedMarkdown({
       const parsed = JSON.parse(jsonMatch[1]);
       if (parsed.type === "CLARIFICATION_NEEDED" && parsed.question) {
         clarificationData = { question: parsed.question, options: parsed.options };
+        markdownContent = content.replace(/```json\s*([\s\S]*?)\s*```/, "").trim();
+      } else if (parsed.type === "permission_request" && parsed.tool && parsed.reason) {
+        permissionData = parsed as PermissionRequestPayload;
         markdownContent = content.replace(/```json\s*([\s\S]*?)\s*```/, "").trim();
       } else if (parsed.type && parsed.summary && parsed.targetField) {
         proposalData = parsed as ProposalPayload;
@@ -218,6 +224,11 @@ export function FormattedMarkdown({
       {/* Render Proposal Card if parsed */}
       {proposalData && projectId && (
         <ProposalCard projectId={projectId} proposal={proposalData} />
+      )}
+
+      {/* Render AI Tool Permission Request Card if parsed */}
+      {permissionData && (
+        <PermissionRequestCard request={permissionData} />
       )}
 
       {/* Render Clarification Pop-Up Modal if triggered */}
