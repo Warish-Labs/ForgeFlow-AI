@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { logAuditEventAction } from "@/lib/services/audit";
-import { invokeLlmWithFallback, cleanJsonText } from "@/lib/ai/provider";
+import { invokeLlmWithFallback, cleanJsonText, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
 import { buildDocumentSystemPrompt } from "@/lib/ai/prompts/document";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 
@@ -142,12 +142,13 @@ export async function generateDocumentAction(
       });
     }
 
+    const providerName = getLlmProvider();
     await logAiUsageAction({
       userId,
       projectId,
       operation: "document",
-      provider: (process.env.LLM_PROVIDER as any) || "groq",
-      model: "llama-3.3-70b-versatile",
+      provider: providerName,
+      model: providerName === "groq" ? getGroqModel() : getGeminiModel(),
       promptTokens: 600,
       completionTokens: 500,
       totalTokens: 1100,

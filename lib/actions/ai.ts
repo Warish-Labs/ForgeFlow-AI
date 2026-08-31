@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { createSynthesisGraph } from "@/lib/ai/graph";
-import { getLlmClient, invokeLlmWithFallback } from "@/lib/ai/provider";
+import { getLlmClient, invokeLlmWithFallback, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
 import { buildChatSystemPrompt } from "@/lib/ai/prompts/chat";
 import { searchTavily } from "@/lib/tools/tavily";
 import { checkUserAiQuotaAction, checkUserTavilyQuotaAction, logAiUsageAction } from "@/lib/services/quota";
@@ -195,12 +195,13 @@ export async function analyzeProjectAction(
       }
     });
 
+    const providerName = getLlmProvider();
     await logAiUsageAction({
       userId,
       projectId,
       operation: "analyze",
-      provider: (process.env.LLM_PROVIDER as any) || "groq",
-      model: "llama-3.3-70b-versatile",
+      provider: providerName,
+      model: providerName === "groq" ? getGroqModel() : getGeminiModel(),
       promptTokens: 800,
       completionTokens: 600,
       totalTokens: 1400,
@@ -486,12 +487,13 @@ export async function sendChatMessageAction(
       },
     });
 
+    const chatProviderName = getLlmProvider();
     await logAiUsageAction({
       userId,
       projectId,
       operation: "chat",
-      provider: (process.env.LLM_PROVIDER as any) || "groq",
-      model: "llama-3.3-70b-versatile",
+      provider: chatProviderName,
+      model: chatProviderName === "groq" ? getGroqModel() : getGeminiModel(),
       promptTokens: 350,
       completionTokens: 250,
       totalTokens: 600,

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { roadmapSynthesisNode } from "@/lib/ai/nodes/roadmapNode";
 import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { ActionResult } from "@/lib/actions/ai";
+import { getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
 
 /**
   * Run Roadmap Synthesis to generate sequential milestone items
@@ -85,12 +86,13 @@ export async function generateRoadmapAction(
 
     });
 
+    const providerName = getLlmProvider();
     await logAiUsageAction({
       userId,
       projectId,
       operation: "roadmap",
-      provider: (process.env.LLM_PROVIDER as any) || "groq",
-      model: "llama-3.3-70b-versatile",
+      provider: providerName,
+      model: providerName === "groq" ? getGroqModel() : getGeminiModel(),
       promptTokens: 900,
       completionTokens: 700,
       totalTokens: 1600,

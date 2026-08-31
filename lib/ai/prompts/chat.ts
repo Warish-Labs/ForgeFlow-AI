@@ -4,12 +4,12 @@ export interface ProjectChatContext {
   ideaText: string;
   problemStatement?: string | null;
   techStack: string[];
-  requirements?: any;
+  requirements?: unknown;
   featureCount: number;
-  decisions: any[];
-  roadmapItems: any[];
+  decisions: Array<{ decision: string; reasoning: string }>;
+  roadmapItems: Array<{ phase: string; title: string; status: string }>;
   assumptions?: string[];
-  openQuestions?: any;
+  openQuestions?: unknown;
   tavilyContext?: string;
 }
 
@@ -18,10 +18,10 @@ export function buildChatSystemPrompt(ctx: ProjectChatContext): string {
   const reqText = ctx.requirements ? JSON.stringify(ctx.requirements) : "No requirements recorded yet.";
   const assumptionsText = ctx.assumptions?.length ? JSON.stringify(ctx.assumptions) : "None recorded.";
   const decisionsText = ctx.decisions?.length
-    ? ctx.decisions.map((d: any) => `- ${d.decision}: ${d.reasoning}`).join("\n")
+    ? ctx.decisions.map((d) => `- ${d.decision}: ${d.reasoning}`).join("\n")
     : "No ADR records yet.";
   const roadmapText = ctx.roadmapItems?.length
-    ? ctx.roadmapItems.map((r: any) => `- [${r.phase}] ${r.title} (${r.status})`).join("\n")
+    ? ctx.roadmapItems.map((r) => `- [${r.phase}] ${r.title} (${r.status})`).join("\n")
     : "No roadmap scheduled yet.";
 
   return `You are ForgeFlow Agent, the expert AI software architect and copilot dedicated SOLELY to assisting with THIS specific project (${ctx.projectName}).

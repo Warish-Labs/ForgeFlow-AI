@@ -15,6 +15,62 @@ export function cleanJsonText(rawText: string): string {
   return cleaned.trim();
 }
 
+/**
+ * Returns configured Groq model ID (default: "openai/gpt-oss-120b")
+ */
+export function getGroqModel(): string {
+  return process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+}
+
+/**
+ * Returns configured Gemini model ID (default: "gemini-2.5-flash")
+ */
+export function getGeminiModel(): string {
+  return process.env.GEMINI_MODEL || "gemini-2.5-flash";
+}
+
+/**
+ * Returns primary configured LLM provider ("groq" | "gemini")
+ */
+export function getLlmProvider(): "groq" | "gemini" {
+  const provider = (process.env.LLM_PROVIDER || "groq").toLowerCase().trim();
+  return provider === "gemini" ? "gemini" : "groq";
+}
+
+export interface ClassifiedLlmError {
+  category: "auth_error" | "model_not_found" | "rate_limit" | "server_error" | "timeout" | "unknown";
+  message: string;
+  status?: number;
+}
+
+export function classifyLlmError(err: unknown): ClassifiedLlmError {
+  const errObj = err as { message?: string; status?: number; statusCode?: number; response?: { status?: number } } | null;
+  const str = (errObj?.message || String(err)).toLowerCase();
+  const status = errObj?.status || errObj?.statusCode || errObj?.response?.status;
+
+  if (status === 404 || str.includes("404") || str.includes("model_not_found") || str.includes("does not exist") || str.includes("not found")) {
+    return { category: "model_not_found", message: errObj?.message || "Model not found or unavailable", status: 404 };
+  }
+  if (status === 401 || status === 403 || str.includes("401") || str.includes("403") || str.includes("unauthorized") || str.includes("invalid api key") || str.includes("permission_denied")) {
+    return { category: "auth_error", message: errObj?.message || "Authentication or permission failure", status: status || 401 };
+  }
+  if (status === 429 || str.includes("429") || str.includes("rate_limit") || str.includes("quota_exceeded") || str.includes("too many requests")) {
+    return { category: "rate_limit", message: errObj?.message || "Rate limit or quota exceeded", status: 429 };
+  }
+  if (str.includes("timeout") || str.includes("etimedout") || str.includes("econnaborted")) {
+    return { category: "timeout", message: errObj?.message || "Provider request timed out" };
+  }
+  if ((status && status >= 500) || str.includes("500") || str.includes("502") || str.includes("503") || str.includes("504") || str.includes("server_error")) {
+    return { category: "server_error", message: errObj?.message || "Provider internal server error", status: status || 500 };
+  }
+
+  return { category: "unknown", message: errObj?.message || String(err), status };
+}
+
+/**
+ * Note: This in-memory RateLimiter guards local request bursts per instance.
+ * It is NOT a globally synchronized limiter across multiple Vercel serverless instances.
+ */
 class RateLimiter {
   private timestamps: number[] = [];
   private limit: number;
@@ -39,16 +95,44 @@ class RateLimiter {
 // 28 RPM limit for Groq (30 RPM quota buffer)
 const groqLimiter = new RateLimiter(28, 60000);
 
+export async function invokeGroq(messages: BaseMessage[]): Promise<string> {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY environment variable is not configured.");
+  }
+  const modelName = getGroqModel();
+  const groqClient = new ChatGroq({
+    apiKey: process.env.GROQ_API_KEY,
+    model: modelName,
+    temperature: 0.2,
+  });
+  const response = await groqClient.invoke(messages);
+  return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+}
+
+export async function invokeGemini(messages: BaseMessage[]): Promise<string> {
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    throw new Error("GOOGLE_GENERATIVE_AI_API_KEY environment variable is not configured.");
+  }
+  const modelName = getGeminiModel();
+  const geminiClient = new ChatGoogleGenerativeAI({
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    model: modelName,
+    temperature: 0.2,
+  });
+  const response = await geminiClient.invoke(messages);
+  return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+}
+
 /**
   * Returns the configured LangChain Chat Model based on LLM_PROVIDER env variable
   */
 export function getLlmClient(forceProvider?: "groq" | "gemini"): BaseChatModel | null {
-  const provider = forceProvider || process.env.LLM_PROVIDER || "groq";
+  const provider = forceProvider || getLlmProvider();
 
   if (provider === "groq" && process.env.GROQ_API_KEY) {
     return new ChatGroq({
       apiKey: process.env.GROQ_API_KEY,
-      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+      model: getGroqModel(),
       temperature: 0.2,
     });
   }
@@ -59,7 +143,7 @@ export function getLlmClient(forceProvider?: "groq" | "gemini"): BaseChatModel |
   ) {
     return new ChatGoogleGenerativeAI({
       apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-      model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+      model: getGeminiModel(),
       temperature: 0.2,
     });
   }
@@ -68,77 +152,111 @@ export function getLlmClient(forceProvider?: "groq" | "gemini"): BaseChatModel |
 }
 
 /**
- * Invokes LLM with automatic rate-limiting and failover from Groq to Gemini.
- * Throws an error if both providers fail (NO silent canned response fallback).
+ * Invokes LLM with bi-directional failover between Groq and Gemini.
+ * Throws a detailed combined diagnostic error if both providers fail (NO silent canned response fallback).
  */
 export async function invokeLlmWithFallback(
   messages: BaseMessage[],
   context?: { userId?: string; projectId?: string; operation?: string }
 ): Promise<string> {
-  const providerPreference = process.env.LLM_PROVIDER || "groq";
+  const preferred = getLlmProvider();
+  const primaryName = preferred === "groq" ? `Groq (${getGroqModel()})` : `Gemini (${getGeminiModel()})`;
+  const secondaryName = preferred === "groq" ? `Gemini (${getGeminiModel()})` : `Groq (${getGroqModel()})`;
 
-  // Try Groq first if preferred and within rate limits
-  if (providerPreference === "groq" && process.env.GROQ_API_KEY && groqLimiter.canProceed()) {
-    try {
-      const groqClient = new ChatGroq({
-        apiKey: process.env.GROQ_API_KEY,
-        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
-        temperature: 0.2,
-      });
-      const response = await groqClient.invoke(messages);
-      return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
-    } catch (err: any) {
-      console.warn("Groq LLM invocation failed or rate-limited, attempting Gemini fallback:", err?.message || err);
-    }
-  }
+  let primaryError: ClassifiedLlmError | null = null;
+  let secondaryError: ClassifiedLlmError | null = null;
 
-  // Gemini Fallback / Primary
-  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-    try {
-      const geminiClient = new ChatGoogleGenerativeAI({
-        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-        model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
-        temperature: 0.2,
-      });
-      const response = await geminiClient.invoke(messages);
-      const text = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
-
-      if (context?.userId) {
-        logAiUsageAction({
-          userId: context.userId,
-          projectId: context.projectId,
-          operation: (context.operation || "fallback") as any,
-          provider: "gemini",
-          model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
-          promptTokens: 0,
-          completionTokens: 0,
-          totalTokens: 0,
-          status: "success",
-        }).catch((e) => console.error("Failed logging fallback usage:", e));
+  // ── Step 1: Attempt Primary Provider ──────────────────────────────────────
+  if (preferred === "groq") {
+    if (process.env.GROQ_API_KEY && groqLimiter.canProceed()) {
+      try {
+        return await invokeGroq(messages);
+      } catch (err: any) {
+        primaryError = classifyLlmError(err);
+        console.warn(`[AI Provider] Primary provider ${primaryName} failed [${primaryError.category}]: ${primaryError.message}. Initiating failover to ${secondaryName}...`);
       }
-
-      return text;
-    } catch (geminiErr: any) {
-      console.error("Gemini LLM invocation failed:", geminiErr);
+    } else if (!process.env.GROQ_API_KEY) {
+      primaryError = { category: "auth_error", message: "GROQ_API_KEY is missing from environment" };
+    } else {
+      primaryError = { category: "rate_limit", message: "Groq local rate limit queue is full (28 RPM)" };
+    }
+  } else {
+    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      try {
+        return await invokeGemini(messages);
+      } catch (err: any) {
+        primaryError = classifyLlmError(err);
+        console.warn(`[AI Provider] Primary provider ${primaryName} failed [${primaryError.category}]: ${primaryError.message}. Initiating failover to ${secondaryName}...`);
+      }
+    } else {
+      primaryError = { category: "auth_error", message: "GOOGLE_GENERATIVE_AI_API_KEY is missing from environment" };
     }
   }
 
-  // Direct Groq retry if Gemini was not configured or failed and Groq wasn't tried yet
-  if (process.env.GROQ_API_KEY) {
-    try {
-      const groqClient = new ChatGroq({
-        apiKey: process.env.GROQ_API_KEY,
-        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
-        temperature: 0.2,
-      });
-      const response = await groqClient.invoke(messages);
-      return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
-    } catch (err: any) {
-      throw new Error(`Groq LLM call failed: ${err?.message || err}`);
+  // ── Step 2: Attempt Secondary / Fallback Provider ───────────────────────────
+  if (preferred === "groq") {
+    if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      try {
+        const text = await invokeGemini(messages);
+
+        if (context?.userId) {
+          logAiUsageAction({
+            userId: context.userId,
+            projectId: context.projectId,
+            operation: (context.operation || "fallback") as any,
+            provider: "gemini",
+            model: getGeminiModel(),
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            status: "success",
+          }).catch((e) => console.error("Failed logging fallback usage:", e));
+        }
+
+        return text;
+      } catch (geminiErr: any) {
+        secondaryError = classifyLlmError(geminiErr);
+        console.error(`[AI Provider] Fallback provider ${secondaryName} also failed [${secondaryError.category}]: ${secondaryError.message}`);
+      }
+    } else {
+      secondaryError = { category: "auth_error", message: "GOOGLE_GENERATIVE_AI_API_KEY is missing from environment" };
+    }
+  } else {
+    if (process.env.GROQ_API_KEY && groqLimiter.canProceed()) {
+      try {
+        const text = await invokeGroq(messages);
+
+        if (context?.userId) {
+          logAiUsageAction({
+            userId: context.userId,
+            projectId: context.projectId,
+            operation: (context.operation || "fallback") as any,
+            provider: "groq",
+            model: getGroqModel(),
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            status: "success",
+          }).catch((e) => console.error("Failed logging fallback usage:", e));
+        }
+
+        return text;
+      } catch (groqErr: any) {
+        secondaryError = classifyLlmError(groqErr);
+        console.error(`[AI Provider] Fallback provider ${secondaryName} also failed [${secondaryError.category}]: ${secondaryError.message}`);
+      }
+    } else if (!process.env.GROQ_API_KEY) {
+      secondaryError = { category: "auth_error", message: "GROQ_API_KEY is missing from environment" };
+    } else {
+      secondaryError = { category: "rate_limit", message: "Groq local rate limit queue is full" };
     }
   }
 
-  throw new Error("No operational LLM providers available (GROQ_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY required).");
+  // ── Step 3: Combine Diagnostics & Fail Safe ────────────────────────────────
+  const pDesc = primaryError ? `${primaryName} (${primaryError.category})` : primaryName;
+  const sDesc = secondaryError ? `${secondaryName} (${secondaryError.category})` : secondaryName;
+
+  throw new Error(`Primary provider ${pDesc} unavailable; fallback provider ${sDesc} also failed.`);
 }
 
 /**

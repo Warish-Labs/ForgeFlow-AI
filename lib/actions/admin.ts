@@ -466,7 +466,7 @@ export async function getModelPricingAction() {
         data: [
           {
             provider: "groq",
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             inputPricePer1mTokens: 0.15,
             outputPricePer1mTokens: 0.60,
             createdByAdminId: adminId || "system",

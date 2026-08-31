@@ -12,8 +12,8 @@ interface AdminSettingsClientProps {
 const STATIC_MODEL_METADATA = [
   {
     provider: "groq",
-    model: "llama-3.3-70b-versatile",
-    displayName: "Groq Llama 3.3 70B Versatile",
+    model: "openai/gpt-oss-120b",
+    displayName: "Groq GPT-OSS 120B",
     contextWindow: "128,000 tokens",
     rateLimit: "30 RPM / 6,000 TPM",
     role: "Primary Synthesis & Blueprint Engine",
@@ -44,7 +44,7 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
 
   // Form state
   const [provider, setProvider] = useState("groq");
-  const [model, setModel] = useState("llama-3.3-70b-versatile");
+  const [model, setModel] = useState("openai/gpt-oss-120b");
   const [inputPrice, setInputPrice] = useState("0.15");
   const [outputPrice, setOutputPrice] = useState("0.60");
   const [isSaving, setIsSaving] = useState(false);
@@ -247,7 +247,7 @@ export function AdminSettingsClient({ pricings: initialPricings }: AdminSettings
               <input
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                placeholder="llama-3.3-70b-versatile"
+                placeholder="openai/gpt-oss-120b"
                 className="w-full rounded-lg border border-[#1b2338] bg-[#0d1220] px-3 py-1.5 text-xs text-[#f3f6fc] focus:border-[#38b6ff] focus:outline-none font-mono"
                 required
               />

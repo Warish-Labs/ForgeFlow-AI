@@ -7,6 +7,8 @@ import { architectureSynthesisNode } from "@/lib/ai/nodes/architectureNode";
 import { checkUserAiQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { ActionResult } from "@/lib/actions/ai";
 
+import { getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
+
 /**
   * Run Architecture Synthesis to generate ADRs and System Topology
   */
@@ -90,12 +92,13 @@ export async function generateArchitectureAction(
 
     });
 
+    const providerName = getLlmProvider();
     await logAiUsageAction({
       userId,
       projectId,
       operation: "architecture",
-      provider: (process.env.LLM_PROVIDER as any) || "groq",
-      model: "llama-3.3-70b-versatile",
+      provider: providerName,
+      model: providerName === "groq" ? getGroqModel() : getGeminiModel(),
       promptTokens: 1000,
       completionTokens: 800,
       totalTokens: 1800,

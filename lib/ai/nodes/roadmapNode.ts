@@ -1,6 +1,5 @@
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import {
-  getLlmClient,
   cleanJsonText,
   generateMockRoadmapSynthesis,
   invokeLlmWithFallback,
