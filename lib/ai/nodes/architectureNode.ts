@@ -3,6 +3,7 @@ import {
   getLlmClient,
   cleanJsonText,
   generateMockArchitectureSynthesis,
+  invokeLlmWithFallback,
 } from "../provider";
 import {
   systemArchitectureSynthesisSchema,
@@ -21,9 +22,9 @@ export async function architectureSynthesisNode(
   input: ArchitectureNodeInput
 ): Promise<SystemArchitectureSynthesisResult> {
   const { projectName, ideaText, problemStatement, techStack = [] } = input;
-  const llm = getLlmClient();
+  const hasKeys = Boolean(process.env.GROQ_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY);
 
-  if (!llm) {
+  if (!hasKeys) {
     return generateMockArchitectureSynthesis(projectName, techStack);
   }
 
@@ -64,18 +65,17 @@ Problem Statement: ${problemStatement || "N/A"}
 Selected Stack: ${techStack.join(", ") || "Next.js, PostgreSQL, Tailwind"}`;
 
   try {
-    const response = await llm.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(userPrompt),
-    ]);
+    const rawText = await invokeLlmWithFallback(
+      [new SystemMessage(systemPrompt), new HumanMessage(userPrompt)],
+      { operation: "architecture" }
+    );
 
-    const rawText = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
     const cleaned = cleanJsonText(rawText);
     const parsed = JSON.parse(cleaned);
 
     return systemArchitectureSynthesisSchema.parse(parsed);
-  } catch (err) {
-    console.error("Architecture Node Synthesis Error, using fallback generator:", err);
-    return generateMockArchitectureSynthesis(projectName, techStack);
+  } catch (err: any) {
+    console.error("Architecture Node Synthesis Error:", err);
+    throw new Error(`Architecture Synthesis Failed: ${err?.message || err}`);
   }
 }

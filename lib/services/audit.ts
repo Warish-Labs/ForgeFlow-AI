@@ -8,7 +8,8 @@ export type AuditActionType =
   | "ADMIN_ACCESS"
   | "ADMIN_ACTION"
   | "DOCUMENT_GENERATED"
-  | "DOCUMENT_EDITED";
+  | "DOCUMENT_EDITED"
+  | "PROPOSAL_ACCEPTED";
 
 export async function logAuditEventAction(params: {
   userId: string;

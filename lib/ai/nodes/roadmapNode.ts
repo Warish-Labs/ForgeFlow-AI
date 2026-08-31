@@ -3,6 +3,7 @@ import {
   getLlmClient,
   cleanJsonText,
   generateMockRoadmapSynthesis,
+  invokeLlmWithFallback,
 } from "../provider";
 import {
   roadmapSynthesisSchema,
@@ -20,9 +21,9 @@ export async function roadmapSynthesisNode(
   input: RoadmapNodeInput
 ): Promise<RoadmapSynthesisResult> {
   const { projectName, ideaText, features = [], decisions = [] } = input;
-  const llm = getLlmClient();
+  const hasKeys = Boolean(process.env.GROQ_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY);
 
-  if (!llm) {
+  if (!hasKeys) {
     return generateMockRoadmapSynthesis(projectName);
   }
 
@@ -52,18 +53,17 @@ Key Features: ${featureTitles || "N/A"}
 Key Architecture Decisions: ${adrTitles || "N/A"}`;
 
   try {
-    const response = await llm.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(userPrompt),
-    ]);
+    const rawText = await invokeLlmWithFallback(
+      [new SystemMessage(systemPrompt), new HumanMessage(userPrompt)],
+      { operation: "roadmap" }
+    );
 
-    const rawText = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
     const cleaned = cleanJsonText(rawText);
     const parsed = JSON.parse(cleaned);
 
     return roadmapSynthesisSchema.parse(parsed);
-  } catch (err) {
-    console.error("Roadmap Node Synthesis Error, using fallback generator:", err);
-    return generateMockRoadmapSynthesis(projectName);
+  } catch (err: any) {
+    console.error("Roadmap Node Synthesis Error:", err);
+    throw new Error(`Roadmap Synthesis Failed: ${err?.message || err}`);
   }
 }

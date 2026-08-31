@@ -1,4 +1,5 @@
 import "server-only";
+import { getCachedTavilySearch, setCachedTavilySearch } from "@/lib/services/tavilyCache";
 
 export interface TavilySearchResult {
   title: string;
@@ -14,13 +15,18 @@ export interface TavilySearchResponse {
 }
 
 /**
- * Perform a live web search using Tavily API
+ * Perform a live web search using Tavily API (Cached & Quota-Protected)
  */
 export async function searchTavily(
   query: string,
   searchDepth: "basic" | "advanced" = "basic",
   maxResults: number = 5
 ): Promise<TavilySearchResponse> {
+  const cached = getCachedTavilySearch(query);
+  if (cached) {
+    return cached;
+  }
+
   const apiKey = process.env.TAVILY_API_KEY;
 
   if (!apiKey) {
@@ -65,7 +71,7 @@ export async function searchTavily(
     }
 
     const data = await res.json();
-    return {
+    const resultResponse: TavilySearchResponse = {
       query,
       answer: data.answer,
       results: (data.results || []).map((item: any) => ({
@@ -75,6 +81,8 @@ export async function searchTavily(
         score: item.score,
       })),
     };
+    setCachedTavilySearch(query, resultResponse);
+    return resultResponse;
   } catch (error: any) {
     console.error("Error calling Tavily API:", error);
     return {

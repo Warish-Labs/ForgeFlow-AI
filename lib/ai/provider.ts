@@ -1,6 +1,8 @@
 import { ChatGroq } from "@langchain/groq";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { BaseMessage } from "@langchain/core/messages";
+import { logAiUsageAction } from "@/lib/services/quota";
 
 /**
   * Cleans markdown code blocks (e.g. ```json ... ```) from LLM text responses
@@ -13,16 +15,40 @@ export function cleanJsonText(rawText: string): string {
   return cleaned.trim();
 }
 
+class RateLimiter {
+  private timestamps: number[] = [];
+  private limit: number;
+  private windowMs: number;
+
+  constructor(limit: number, windowMs: number) {
+    this.limit = limit;
+    this.windowMs = windowMs;
+  }
+
+  canProceed(): boolean {
+    const now = Date.now();
+    this.timestamps = this.timestamps.filter((ts) => now - ts < this.windowMs);
+    if (this.timestamps.length < this.limit) {
+      this.timestamps.push(now);
+      return true;
+    }
+    return false;
+  }
+}
+
+// 28 RPM limit for Groq (30 RPM quota buffer)
+const groqLimiter = new RateLimiter(28, 60000);
+
 /**
   * Returns the configured LangChain Chat Model based on LLM_PROVIDER env variable
   */
-export function getLlmClient(): BaseChatModel | null {
-  const provider = process.env.LLM_PROVIDER || "groq";
+export function getLlmClient(forceProvider?: "groq" | "gemini"): BaseChatModel | null {
+  const provider = forceProvider || process.env.LLM_PROVIDER || "groq";
 
   if (provider === "groq" && process.env.GROQ_API_KEY) {
     return new ChatGroq({
       apiKey: process.env.GROQ_API_KEY,
-      model: "llama-3.3-70b-versatile",
+      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
       temperature: 0.2,
     });
   }
@@ -33,12 +59,86 @@ export function getLlmClient(): BaseChatModel | null {
   ) {
     return new ChatGoogleGenerativeAI({
       apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-      model: "gemini-1.5-flash",
+      model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
       temperature: 0.2,
     });
   }
 
   return null;
+}
+
+/**
+ * Invokes LLM with automatic rate-limiting and failover from Groq to Gemini.
+ * Throws an error if both providers fail (NO silent canned response fallback).
+ */
+export async function invokeLlmWithFallback(
+  messages: BaseMessage[],
+  context?: { userId?: string; projectId?: string; operation?: string }
+): Promise<string> {
+  const providerPreference = process.env.LLM_PROVIDER || "groq";
+
+  // Try Groq first if preferred and within rate limits
+  if (providerPreference === "groq" && process.env.GROQ_API_KEY && groqLimiter.canProceed()) {
+    try {
+      const groqClient = new ChatGroq({
+        apiKey: process.env.GROQ_API_KEY,
+        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        temperature: 0.2,
+      });
+      const response = await groqClient.invoke(messages);
+      return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+    } catch (err: any) {
+      console.warn("Groq LLM invocation failed or rate-limited, attempting Gemini fallback:", err?.message || err);
+    }
+  }
+
+  // Gemini Fallback / Primary
+  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    try {
+      const geminiClient = new ChatGoogleGenerativeAI({
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+        model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+        temperature: 0.2,
+      });
+      const response = await geminiClient.invoke(messages);
+      const text = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+
+      if (context?.userId) {
+        logAiUsageAction({
+          userId: context.userId,
+          projectId: context.projectId,
+          operation: (context.operation || "fallback") as any,
+          provider: "gemini",
+          model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          status: "success",
+        }).catch((e) => console.error("Failed logging fallback usage:", e));
+      }
+
+      return text;
+    } catch (geminiErr: any) {
+      console.error("Gemini LLM invocation failed:", geminiErr);
+    }
+  }
+
+  // Direct Groq retry if Gemini was not configured or failed and Groq wasn't tried yet
+  if (process.env.GROQ_API_KEY) {
+    try {
+      const groqClient = new ChatGroq({
+        apiKey: process.env.GROQ_API_KEY,
+        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        temperature: 0.2,
+      });
+      const response = await groqClient.invoke(messages);
+      return typeof response.content === "string" ? response.content : JSON.stringify(response.content);
+    } catch (err: any) {
+      throw new Error(`Groq LLM call failed: ${err?.message || err}`);
+    }
+  }
+
+  throw new Error("No operational LLM providers available (GROQ_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY required).");
 }
 
 /**

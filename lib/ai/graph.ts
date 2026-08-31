@@ -4,6 +4,7 @@ import {
   getLlmClient,
   cleanJsonText,
   generateMockRequirementSynthesis,
+  invokeLlmWithFallback,
 } from "./provider";
 import {
   requirementSynthesisSchema,
@@ -65,13 +66,12 @@ export type ForgeFlowState = typeof ForgeFlowGraphState.State;
  * Requirement Synthesis Node with Agentic Ask-User Tool Decision Reasoning
  */
 export async function requirementSynthesisNode(state: ForgeFlowState) {
-  const { ideaText, projectName, userAnswers = {} } = state;
-  const llm = getLlmClient();
-
+  const { ideaText, projectName, userAnswers = {}, projectId } = state;
+  const hasKeys = Boolean(process.env.GROQ_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY);
   const answersCount = Object.keys(userAnswers).length;
 
-  // Offline / Mock Mode Logic when LLM API keys are not supplied
-  if (!llm) {
+  // Offline / Mock Mode Logic ONLY when no API keys exist
+  if (!hasKeys) {
     const lowerIdea = ideaText.toLowerCase();
     const hasPrisma = lowerIdea.includes("prisma");
     const hasDbChoice =
@@ -122,36 +122,34 @@ export async function requirementSynthesisNode(state: ForgeFlowState) {
   }
 
   // Live LLM Mode
-  const systemPrompt = `You are an elite Software Architect and Systems Analyst executing an interactive requirement synthesis pipeline.
+  const systemPrompt = `You are an elite Software Architect and Systems Analyst executing an interactive requirement synthesis pipeline for software blueprints.
 
 You are NOT restricted to what the user provided — the user's input is a starting point, not a ceiling.
-Think through the actual technical implications of the given stack & vision:
-- If the user specifies an ORM like "Prisma" or "Drizzle" without a database engine, ask which database to use (e.g. PostgreSQL, MySQL, SQLite).
-- If the user requests real-time features without specifying a WebSocket or PubSub layer, ask about real-time engine choice.
-- If authentication or database is ambiguous, identify open decision points.
+Analyze the given software vision and any user answers provided so far.
 
 INSTRUCTIONS:
-1. If there are genuine, critical technical decisions that are missing or ambiguous, and user Answers have NOT yet been provided to resolve them, return a JSON object asking questions:
+1. Examine the vision text for missing, ambiguous, or critical technical decisions (e.g. database choice for an ORM, real-time mechanism, auth provider, storage, scale assumptions).
+2. If there are genuine technical ambiguities that have NOT yet been answered by the user, return a JSON object with status "NEEDS_INPUT":
 {
   "status": "NEEDS_INPUT",
   "questions": [
     {
       "id": "db_choice",
       "type": "single_select",
-      "prompt": "Clear question for the user",
+      "prompt": "Clear question addressing the exact technical ambiguity in THIS project",
       "options": ["Option 1", "Option 2"],
-      "reasoning": "Clear technical rationale explaining WHY the AI agent is asking this question"
+      "reasoning": "Technical rationale explaining why this decision matters"
     }
   ]
 }
 
-2. If the user's input is ALREADY complete enough with clear stack details, OR if user answers have been provided, return the finalized blueprint JSON matching status "COMPLETED":
+3. If the user's input is ALREADY sufficient, OR if answers have resolved key ambiguities, return the finalized blueprint JSON with status "COMPLETED":
 {
   "status": "COMPLETED",
-  "problemStatement": "Clear concise 1-2 sentence problem description",
+  "problemStatement": "Clear concise 1-2 sentence problem description tailored to this vision",
   "suggestedStack": ["Tech1", "Tech2", "Tech3"],
-  "functionalRequirements": ["Requirement 1", "Requirement 2"],
-  "nonFunctionalRequirements": ["NFR 1", "NFR 2"],
+  "functionalRequirements": ["Functional requirement 1", "Functional requirement 2"],
+  "nonFunctionalRequirements": ["Non-functional requirement 1", "Non-functional requirement 2"],
   "extractedFeatures": [
     {
       "title": "Feature Name",
@@ -166,24 +164,22 @@ INSTRUCTIONS:
 Vision Description:
 ${ideaText}
 
-User Answers Previously Provided:
+User Answers Provided So Far:
 ${JSON.stringify(userAnswers)}`;
 
   try {
-    const response = await llm.invoke([
-      new SystemMessage(systemPrompt),
-      new HumanMessage(userPrompt),
-    ]);
+    const rawText = await invokeLlmWithFallback(
+      [new SystemMessage(systemPrompt), new HumanMessage(userPrompt)],
+      { projectId, operation: "analyze" }
+    );
 
-    const rawText = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
     const cleaned = cleanJsonText(rawText);
     const parsed = JSON.parse(cleaned);
 
     if (
       parsed.status === "NEEDS_INPUT" &&
       Array.isArray(parsed.questions) &&
-      parsed.questions.length > 0 &&
-      answersCount === 0
+      parsed.questions.length > 0
     ) {
       // Trigger LangGraph Interrupt
       const resumedAnswers = interrupt({
@@ -194,14 +190,16 @@ ${JSON.stringify(userAnswers)}`;
       const finalAnswers = resumedAnswers || userAnswers;
 
       // Re-invoke LLM with user answers
-      const secondResponse = await llm.invoke([
-        new SystemMessage(systemPrompt),
-        new HumanMessage(
-          `Project Name: ${projectName}\nVision Description:\n${ideaText}\n\nUser Answers Provided:\n${JSON.stringify(finalAnswers)}`
-        ),
-      ]);
+      const secondRaw = await invokeLlmWithFallback(
+        [
+          new SystemMessage(systemPrompt),
+          new HumanMessage(
+            `Project Name: ${projectName}\nVision Description:\n${ideaText}\n\nUser Answers Provided:\n${JSON.stringify(finalAnswers)}`
+          ),
+        ],
+        { projectId, operation: "analyze" }
+      );
 
-      const secondRaw = typeof secondResponse.content === "string" ? secondResponse.content : JSON.stringify(secondResponse.content);
       const secondCleaned = cleanJsonText(secondRaw);
       const secondParsed = JSON.parse(secondCleaned);
 
@@ -221,13 +219,8 @@ ${JSON.stringify(userAnswers)}`;
       error: null,
     };
   } catch (err: any) {
-    console.error("AI Synthesis Error, using fallback generator:", err);
-    const fallbackOutput = generateMockRequirementSynthesis(ideaText, projectName);
-    return {
-      result: fallbackOutput,
-      status: "COMPLETED",
-      error: null,
-    };
+    console.error("AI Synthesis Error in requirementSynthesisNode:", err);
+    throw new Error(`Requirement Synthesis Failed: ${err?.message || err}`);
   }
 }
 

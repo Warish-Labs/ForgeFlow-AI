@@ -56,11 +56,12 @@ Generic AI chat interfaces generate **disposable text** — unvalidated suggesti
 
 | Feature Module | Capabilities |
 |---|---|
-| 🎯 **Software Vision Engine** | Generates functional/non-functional requirements, target user personas, and core MVP boundaries from prompt inputs. |
-| 🏗️ **Architecture & Data Synthesizer** | Designs component topology, entity-relationship schemas, and immutable Architecture Decision Records (ADRs). |
+| 🎯 **Software Vision Engine** | Generates functional/non-functional requirements, target user personas, and core MVP boundaries grounded in LLM reasoning with multi-round dynamic Q&A. |
+| 🏗️ **Architecture & Data Synthesizer** | Designs component topology, entity-relationship schemas, and immutable Architecture Decision Records (ADRs) with zero canned template replies. |
 | 📅 **Sequential Delivery Roadmap** | Auto-structures Phase 1 (MVP), Phase 2 (Growth), and Phase 3 (Scale) milestones with prerequisite dependency graphs. |
-| 🛡️ **ForgeFlow Agent Copilot** | Context-grounded assistant trained on your exact project state with live Tavily web search capabilities. |
-| 📋 **Watchlist & User Telemetry** | PostgreSQL waitlist persistence and Super Admin analytics studio. |
+| 🛡️ **ForgeFlow Agent Copilot** | Context-grounded assistant trained on live project state graph, emitting structured Proposal Cards with Groq ➔ Gemini automatic failover and cached Tavily web research. |
+| 📑 **LLM Document Synthesizer** | Dynamically generates 10 comprehensive specification documents (PRD, Stack Guide, Security Spec, System Topology, ADRs, etc.) directly from live state. |
+| 📋 **Watchlist & User Telemetry** | PostgreSQL waitlist persistence, audit logging for accepted proposals, and Super Admin analytics studio. |
 | ✉️ **Custom Resend Email Broadcast** | Live HTML email code & preview studio for broadcasting release notes to waitlist subscribers or registered tenants. |
 
 ---

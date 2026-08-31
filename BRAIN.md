@@ -30,3 +30,12 @@ ForgeFlow AI is a Next.js 16.2.9 app that turns a one-line software idea into a 
 **Phase 2: COMPLETE** ✓ (AI Core, Requirement Synthesis & Copilot Chat)
 **Phase 3: COMPLETE** ✓ (System Architecture & ADR Synthesis)
 **Phase 4: COMPLETE** ✓ (Implementation Roadmap & Markdown Blueprint Export)
+**Phase 5 (AI Grounding Overhaul): COMPLETE** ✓ (Zero Canned Replies, Groq/Gemini Failover, Dynamic Q&A & LLM Document Synthesis)
+
+## 2026-08-31 — LLM Grounding & Provider Fallback Overhaul
+
+- **Eliminated All Hardcoded Reply Templates**: Replaced template string responses across Chat (`sendChatMessageAction`), Document Generation (`generateDocumentAction`), Analyze Vision (`requirementSynthesisNode`), Architecture (`architectureSynthesisNode`), and Roadmap (`roadmapSynthesisNode`) with live LLM synthesis grounded in full project state graph.
+- **Provider Resilience & Failover (`lib/ai/provider.ts`)**: Implemented Groq 28 RPM rate-limiter queue with automatic failover to Gemini on 429/5xx/timeout.
+- **Confirmation-Gated Proposals & Audit**: Chat state modifications emit structured JSON proposals parsed by `ProposalCard`. Every accepted proposal writes an audit log entry (`PROPOSAL_ACCEPTED`) with before/after state via `lib/services/audit.ts`.
+- **Tavily Search Cache**: Added 1-hour in-memory TTL query cache (`lib/services/tavilyCache.ts`) to conserve free-tier search credits.
+- **Zero-Canned-Reply Policy**: Never add template-string fallbacks for AI-facing text. All LLM invocation errors must surface as explicit error states in the UI.

@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { createSynthesisGraph } from "@/lib/ai/graph";
-import { getLlmClient } from "@/lib/ai/provider";
+import { getLlmClient, invokeLlmWithFallback } from "@/lib/ai/provider";
+import { buildChatSystemPrompt } from "@/lib/ai/prompts/chat";
 import { searchTavily } from "@/lib/tools/tavily";
 import { checkUserAiQuotaAction, checkUserTavilyQuotaAction, logAiUsageAction } from "@/lib/services/quota";
+import { logAuditEventAction } from "@/lib/services/audit";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 
 export type ActionResult<T> =
@@ -20,6 +22,7 @@ export interface ProposalPayload {
   targetField: "techStack" | "requirements" | "problemStatement" | "assumptions";
   newValue: any;
   affectedAreas: string[];
+  reasoning?: string;
 }
 
 const OUT_OF_SCOPE_FALLBACK = "I'm not able to understand that question.";
@@ -342,7 +345,7 @@ export async function resumeProjectSynthesisAction(
 }
 
 /**
- * ForgeFlow Agent AI Chat Action with strict boundary fallback and proposal generation
+ * ForgeFlow Agent AI Chat Action grounded in live project state
  */
 export async function sendChatMessageAction(
   projectId: string,
@@ -403,25 +406,6 @@ export async function sendChatMessageAction(
       },
     });
 
-    // ── Strict Out of Scope Boundary Check ────────────────────────────────
-    if (isOutofScopeQuery(userMessageContent)) {
-      await prisma.chatMessage.create({
-        data: {
-          sessionId: session.id,
-          role: "assistant",
-          content: OUT_OF_SCOPE_FALLBACK,
-        },
-      });
-
-      return {
-        success: true,
-        data: {
-          userMessageId: userMessage.id,
-          assistantContent: OUT_OF_SCOPE_FALLBACK,
-        },
-      };
-    }
-
     // ── Tavily Research Optional ──────────────────────────────────────────
     let tavilyContext = "";
     const lowerQuery = userMessageContent.toLowerCase();
@@ -461,88 +445,37 @@ export async function sendChatMessageAction(
       }
     }
 
-    const llm = getLlmClient();
-    let assistantReply = "";
+    const techStack = Array.isArray(project.techStack) ? (project.techStack as string[]) : [];
+    const assumptions = Array.isArray(project.assumptions) ? (project.assumptions as string[]) : [];
 
-    const stackList = (project.techStack as string[]) || [];
-    const requirementsText = project.requirements
-      ? JSON.stringify(project.requirements)
-      : "No requirements extracted yet.";
+    const systemPromptText = buildChatSystemPrompt({
+      projectId: project.id,
+      projectName: project.name,
+      ideaText: project.ideaText,
+      problemStatement: project.problemStatement,
+      techStack,
+      requirements: project.requirements,
+      featureCount: project.features.length,
+      decisions: project.decisions,
+      roadmapItems: project.roadmapItems,
+      assumptions,
+      openQuestions: project.openQuestions,
+      tavilyContext,
+    });
 
-    const systemPrompt = `You are ForgeFlow Agent, the in-app AI agent for ForgeFlow AI. You help with THIS project only — its requirements, tech stack, architecture, roadmap, and decision log — and with how to use ForgeFlow itself.
+    const conversationHistory = session.messages.slice(-6).map((m) => {
+      if (m.role === "user") return new HumanMessage(m.content);
+      return new AIMessage(m.content);
+    });
 
-=== ACTIVE PROJECT CONTEXT ===
-- Project ID: ${project.id}
-- Name: ${project.name}
-- Vision Idea: ${project.ideaText}
-- Problem Statement: ${project.problemStatement || "Not specified"}
-- Target Stack: ${JSON.stringify(stackList)}
-- Requirements: ${requirementsText}
-- Feature Count: ${project.features.length}
-- Decision Records (ADRs): ${project.decisions.length}
-- Roadmap Milestone Count: ${project.roadmapItems.length}
-${tavilyContext}
-
-Navigation map:
-- Overview      → /projects/${project.id}
-- Requirements  → /projects/${project.id}/requirements
-- Architecture  → /projects/${project.id}/architecture
-- Roadmap       → /projects/${project.id}/roadmap
-- Decisions     → /projects/${project.id}/decisions
-- Documents     → /projects/${project.id}/documents
-- Settings      → /projects/${project.id}/settings
-
-FORMATTING & RESPONSE RULES:
-1. Always format responses in clean GitHub Markdown using headers (\`### Section Title\`), bold highlights (\`**keyword**\`), bullet lists (\`- point\`), and inline code tags (\`\` \`Next.js\` \`\`\`).
-2. Provide direct, non-repetitive answers tailored specifically to what the user asked. NEVER output generic repetitive templates.
-3. If the user asks to modify project state (e.g. change tech stack, add frameworks, update vision), restate your recommendation and append a JSON block at the very end of your response formatted EXACTLY like this:
-   \`\`\`json
-   {
-     "type": "STACK_CHANGE",
-     "summary": "Change tech stack to include React.js and Node.js",
-     "targetField": "techStack",
-     "newValue": ["React.js", "Node.js", "PostgreSQL"],
-     "affectedAreas": ["Architecture Topology", "Document Specs"]
-   }
-   \`\`\`
-4. If you need clarification from the user to make a decision, append a JSON block formatted like this:
-   \`\`\`json
-   {
-     "type": "CLARIFICATION_NEEDED",
-     "question": "Which database engine would you prefer for session storage?",
-     "options": ["Redis", "PostgreSQL", "MongoDB"]
-   }
-   \`\`\`
-
-You must not answer anything outside this project scope — general knowledge, cooking recipes, generic non-project coding requests. If asked, reply with EXACTLY: "I'm not able to understand that question." Nothing more.`;
-
-    if (llm) {
-      const conversationHistory = session.messages.slice(-6).map((m) => {
-        if (m.role === "user") return new HumanMessage(m.content);
-        return new AIMessage(m.content);
-      });
-
-      try {
-        const response = await llm.invoke([
-          new SystemMessage(systemPrompt),
-          ...conversationHistory,
-          new HumanMessage(userMessageContent),
-        ]);
-
-        assistantReply = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
-      } catch (llmError: any) {
-        console.error("LLM Provider error in ForgeFlow Agent chat action:", llmError);
-
-        // Check if user is asking to change stack in offline mode
-        if (lowerQuery.includes("change") && lowerQuery.includes("stack")) {
-          assistantReply = `I understand you want to modify the tech stack for **${project.name}**.\n\nHere is the proposal for your review:\n\n\`\`\`json\n{\n  "type": "STACK_CHANGE",\n  "summary": "Update target technology stack based on user request",\n  "targetField": "techStack",\n  "newValue": ["React.js", "Node.js", "PostgreSQL"],\n  "affectedAreas": ["Architecture Topology", "Exported Documents"]\n}\n\`\`\``;
-        } else {
-          assistantReply = `Regarding your question about **"${userMessageContent}"** for **${project.name}**:\n\n- **Project Vision**: ${project.ideaText}\n- **Current Tech Stack**: ${JSON.stringify(stackList)}\n\nYou can view your system architecture at [Architecture Specs](/projects/${project.id}/architecture).`;
-        }
-      }
-    } else {
-      assistantReply = `Regarding your question about **"${userMessageContent}"**:\n\n- **Project**: ${project.name}\n- **Current Stack**: ${JSON.stringify(stackList)}\n\nYou can manage settings at [Project Overview](/projects/${project.id}).`;
-    }
+    const assistantReply = await invokeLlmWithFallback(
+      [
+        new SystemMessage(systemPromptText),
+        ...conversationHistory,
+        new HumanMessage(userMessageContent),
+      ],
+      { userId, projectId, operation: "chat" }
+    );
 
     // Save assistant message
     await prisma.chatMessage.create({
@@ -576,7 +509,7 @@ You must not answer anything outside this project scope — general knowledge, c
     console.error("Error in sendChatMessageAction:", error);
     return {
       success: false,
-      error: { code: "INTERNAL_ERROR", message: "Failed to process chat message." },
+      error: { code: "AI_ERROR", message: `AI Assistant Error: ${error?.message || "Failed to generate AI response."}` },
     };
   }
 }
@@ -602,6 +535,8 @@ export async function acceptProposalAction(
       return { success: false, error: { code: "NOT_FOUND", message: "Project not found" } };
     }
 
+    const previousValue = (project as any)[proposal.targetField];
+
     await prisma.$transaction(async (tx) => {
       // Update target field
       await tx.project.update({
@@ -616,10 +551,24 @@ export async function acceptProposalAction(
         data: {
           projectId,
           decision: `ForgeFlow Agent Proposal Accepted: ${proposal.summary}`,
-          reasoning: `User explicitly accepted proposal to update ${proposal.targetField}.`,
+          reasoning: proposal.reasoning || `User explicitly accepted proposal to update ${proposal.targetField}.`,
           affectedAreas: proposal.affectedAreas,
         },
       });
+    });
+
+    // Write audit event with before and after state
+    await logAuditEventAction({
+      userId,
+      projectId,
+      action: "PROPOSAL_ACCEPTED",
+      metadata: {
+        proposalType: proposal.type,
+        targetField: proposal.targetField,
+        previousValue,
+        newValue: proposal.newValue,
+        summary: proposal.summary,
+      },
     });
 
     revalidatePath(`/projects/${projectId}`);
