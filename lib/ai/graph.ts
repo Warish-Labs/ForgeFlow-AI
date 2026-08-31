@@ -178,35 +178,14 @@ ${JSON.stringify(userAnswers)}`;
     if (
       parsed.status === "NEEDS_INPUT" &&
       Array.isArray(parsed.questions) &&
-      parsed.questions.length > 0
+      parsed.questions.length > 0 &&
+      Object.keys(userAnswers).length === 0
     ) {
-      // Trigger LangGraph Interrupt
-      const resumedAnswers = interrupt({
-        status: "NEEDS_INPUT",
-        questions: parsed.questions,
-      }) as Record<string, any> | undefined;
-
-      const finalAnswers = resumedAnswers || userAnswers;
-
-      // Re-invoke LLM with user answers
-      const secondRaw = await invokeLlmWithFallback(
-        [
-          new SystemMessage(systemPrompt),
-          new HumanMessage(
-            `Project Name: ${projectName}\nVision Description:\n${ideaText}\n\nUser Answers Provided:\n${JSON.stringify(finalAnswers)}`
-          ),
-        ],
-        { projectId, operation: "analyze" }
-      );
-
-      const secondCleaned = cleanJsonText(secondRaw);
-      const secondParsed = JSON.parse(secondCleaned);
-
-      const validated = requirementSynthesisSchema.parse(secondParsed);
       return {
-        result: validated,
-        userAnswers: finalAnswers,
-        status: "COMPLETED",
+        result: null,
+        questions: parsed.questions,
+        userAnswers,
+        status: "NEEDS_INPUT",
         error: null,
       };
     }
@@ -214,10 +193,21 @@ ${JSON.stringify(userAnswers)}`;
     const validated = requirementSynthesisSchema.parse(parsed);
     return {
       result: validated,
+      userAnswers,
       status: "COMPLETED",
       error: null,
     };
   } catch (err: any) {
+    if (err?.value?.status === "NEEDS_INPUT" || (Array.isArray(err) && err[0]?.value?.status === "NEEDS_INPUT")) {
+      const qPayload = err?.value?.questions || err[0]?.value?.questions || [];
+      return {
+        result: null,
+        questions: qPayload,
+        userAnswers,
+        status: "NEEDS_INPUT",
+        error: null,
+      };
+    }
     console.error("AI Synthesis Error in requirementSynthesisNode:", err);
     throw new Error(`Requirement Synthesis Failed: ${err?.message || err}`);
   }

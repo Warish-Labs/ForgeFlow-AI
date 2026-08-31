@@ -252,101 +252,17 @@ export async function resumeProjectSynthesisAction(
       };
     }
 
-    const graph = createSynthesisGraph();
-    let stateResult: any;
-
-    try {
-      stateResult = await graph.invoke(
-        new Command({ resume: answers }),
-        { configurable: { thread_id: projectId } }
-      );
-    } catch (_) {
-      // Fallback: re-invoke graph directly with user answers in state
-      return await analyzeProjectAction(projectId, answers);
-    }
-
-    if (
-      stateResult.status === "NEEDS_INPUT" ||
-      stateResult.__interrupt__?.length > 0
-    ) {
-      const interruptData = stateResult.__interrupt__?.[0]?.value || stateResult;
-      const questions: QuestionItem[] = interruptData.questions || [];
-
-      await prisma.project.update({
-        where: { id: projectId },
-        data: { openQuestions: questions as any },
-      });
-
-      return {
-        success: true,
-        data: {
-          success: true,
-          status: "NEEDS_INPUT",
-          questions,
-        },
-      };
-    }
-
-    const synthesis = stateResult.result;
-    if (!synthesis) {
-      return await analyzeProjectAction(projectId, answers);
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.project.update({
-        where: { id: projectId },
-        data: {
-          problemStatement: synthesis.problemStatement,
-          techStack: synthesis.suggestedStack,
-          requirements: {
-            functional: synthesis.functionalRequirements,
-            nonFunctional: synthesis.nonFunctionalRequirements,
-          },
-          openQuestions: Prisma.DbNull,
-          status: "ARCHITECTURE",
-        },
-      });
-
-      await tx.feature.deleteMany({ where: { projectId } });
-      await tx.decision.deleteMany({ where: { projectId } });
-
-      if (synthesis.suggestedStack.length > 0) {
-        await tx.feature.createMany({
-          data: [
-            {
-              projectId,
-              title: "Core System Infrastructure & Authentication",
-              description: `Initial architecture stack setup with ${synthesis.suggestedStack.slice(0, 3).join(", ")}.`,
-              phase: "MVP",
-              status: "planned",
-            },
-            {
-              projectId,
-              title: "Primary Relational Data Schema",
-              description: "Database models, indexes, and single-tenant ownership constraints.",
-              phase: "MVP",
-              status: "planned",
-            },
-          ],
-        });
-
-        await tx.decision.create({
-          data: {
-            projectId,
-            decision: `Selected initial core stack: ${synthesis.suggestedStack.join(", ")}`,
-            reasoning: `Applied user technical choices: ${Object.entries(answers).map(([k, v]) => `${k}:${v}`).join(", ")}`,
-            alternative: "Monolithic framework",
-            affectedAreas: ["Architecture", "Database", "Security"],
-          },
-        });
-      }
-    });
-
-    revalidatePath(`/projects/${projectId}`);
-    return { success: true, data: { success: true, status: "COMPLETED" } };
-  } catch (error: any) {
-    console.error("Error in resumeProjectSynthesisAction:", error);
     return await analyzeProjectAction(projectId, answers);
+  } catch (error: any) {
+    console.error("[AI] Error in resumeProjectSynthesisAction:", error);
+    return {
+      success: false,
+      error: {
+        code: "AI_RESUME_ERROR",
+        operation: "analyze",
+        message: `Failed to resume synthesis: ${error?.message || error}`,
+      },
+    };
   }
 }
 

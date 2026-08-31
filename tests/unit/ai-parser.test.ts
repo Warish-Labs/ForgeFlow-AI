@@ -104,4 +104,26 @@ describe("AI Output Cleaning & Zod Schema Validation Guard", () => {
     expect(promptA).toContain("Socket.io");
     expect(promptB).toContain("Stripe");
   });
+
+  it("should parse NEEDS_INPUT questionnaire payload without throwing schema error", () => {
+    const needsInputJson = `{
+      "status": "NEEDS_INPUT",
+      "questions": [
+        {
+          "id": "db_choice",
+          "type": "single_select",
+          "prompt": "Which database engine should this project use?",
+          "options": ["PostgreSQL", "MySQL"],
+          "reasoning": "Database engine selection impacts ORM configuration."
+        }
+      ]
+    }`;
+
+    const cleaned = cleanJsonText(needsInputJson);
+    const parsed = JSON.parse(cleaned);
+
+    expect(parsed.status).toBe("NEEDS_INPUT");
+    expect(parsed.questions).toHaveLength(1);
+    expect(parsed.questions[0].id).toBe("db_choice");
+  });
 });
