@@ -8,8 +8,8 @@ import { createSynthesisGraph } from "@/lib/ai/graph";
 import { getLlmClient, invokeLlmWithFallback, logAiStage, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
 import { buildChatSystemPrompt } from "@/lib/ai/prompts/chat";
 import { searchTavily } from "@/lib/tools/tavily";
-import { checkUserAiQuotaAction, checkUserTavilyQuotaAction, logAiUsageAction } from "@/lib/services/quota";
 import { logAuditEventAction } from "@/lib/services/audit";
+import { checkIsAdmin } from "@/lib/auth/guard";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 
 export type ActionResult<T> =
