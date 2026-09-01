@@ -148,7 +148,7 @@ model AiUsageLog {
   id               String   @id @default(cuid())
   userId           String   @default("system")
   projectId        String?
-  project          Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project          Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   operation        String   // "chat" | "analyze" | "architecture" | "roadmap" | "document"
   provider         String   // "groq" | "gemini" | "tavily"
   model            String?
