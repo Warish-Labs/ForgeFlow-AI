@@ -48,7 +48,7 @@ export function EditableRoadmapCard({ projectId, item }: EditableRoadmapCardProp
   async function handleQuickToggle() {
     if (isToggling) return;
     setIsToggling(true);
-    const nextStatus = statusCycle[status] || "pending";
+    const nextStatus = status === "completed" ? "pending" : "completed";
     const res = await updateRoadmapItemAction(projectId, item.id, { status: nextStatus });
     if (res.success) {
       setStatus(nextStatus);
