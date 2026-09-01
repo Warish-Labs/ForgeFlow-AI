@@ -125,6 +125,19 @@ async function runDeploy() {
     console.log("🔍 Checking if initial database seeding is required...");
     const projectCount = await prisma.project.count();
 
+    try {
+      // Safely ensure production PostgreSQL FK constraint on AiUsageLog is ON DELETE SET NULL
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "AiUsageLog" DROP CONSTRAINT IF EXISTS "AiUsageLog_projectId_fkey";
+      `);
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "AiUsageLog" ADD CONSTRAINT "AiUsageLog_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+      `);
+      console.log("✅ AiUsageLog foreign key constraint verified: ON DELETE SET NULL.");
+    } catch (fkErr: any) {
+      console.warn("ℹ️ FK constraint update notice:", sanitizeText(fkErr?.message || String(fkErr)));
+    }
+
     if (projectCount === 0) {
       console.log("🌱 Database is empty (0 projects found). Running seed script for first deployment...");
       const seedOutput = execSync("npx tsx prisma/seed.ts", {

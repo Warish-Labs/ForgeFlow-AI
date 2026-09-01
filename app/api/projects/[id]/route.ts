@@ -119,8 +119,14 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       );
     }
 
-    await prisma.project.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      await tx.aiUsageLog.updateMany({
+        where: { projectId: id },
+        data: { projectId: null },
+      });
+      await tx.project.delete({
+        where: { id },
+      });
     });
 
     return NextResponse.json({ data: { success: true, id } });

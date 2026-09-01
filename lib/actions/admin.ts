@@ -630,7 +630,13 @@ export async function deleteProjectAdminAction(projectId: string): Promise<{ suc
   }
 
   try {
-    await prisma.project.delete({ where: { id: projectId } });
+    await prisma.$transaction(async (tx) => {
+      await tx.aiUsageLog.updateMany({
+        where: { projectId },
+        data: { projectId: null },
+      });
+      await tx.project.delete({ where: { id: projectId } });
+    });
 
     await logAuditEventAction({
       userId: adminId,

@@ -251,8 +251,17 @@ export async function deleteProjectAction(
       };
     }
 
-    await prisma.project.delete({
-      where: { id: projectId },
+    await prisma.$transaction(async (tx) => {
+      // 1. Explicitly detach AI usage logs so token usage counts remain cumulative after project deletion
+      await tx.aiUsageLog.updateMany({
+        where: { projectId },
+        data: { projectId: null },
+      });
+
+      // 2. Delete project record
+      await tx.project.delete({
+        where: { id: projectId },
+      });
     });
 
     revalidatePath("/dashboard");
