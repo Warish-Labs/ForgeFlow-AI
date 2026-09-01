@@ -31,7 +31,6 @@ export function NextStepCard({
 
   // Ask-User Tool Question Modal state
   const [pendingQuestions, setPendingQuestions] = useState<QuestionItem[] | null>(null);
-  const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false);
 
   let title = "";
   let description = "";
@@ -113,22 +112,34 @@ export function NextStepCard({
   }
 
   async function handleQuestionnaireSubmit(answers: Record<string, any>) {
-    setIsSubmittingAnswers(true);
+    setErrorMsg(null);
     const result = await resumeProjectSynthesisAction(projectId, answers);
-    setIsSubmittingAnswers(false);
 
     if (!result.success) {
       setErrorMsg(result.error.message);
-      return;
+      return {
+        success: false,
+        error: { code: result.error.code, message: result.error.message },
+      };
     }
 
     if (result.data.status === "NEEDS_INPUT" && result.data.questions) {
       setPendingQuestions(result.data.questions);
-      return;
+      return {
+        success: true,
+        status: "NEEDS_INPUT" as const,
+        questions: result.data.questions,
+      };
     }
 
     setPendingQuestions(null);
     router.refresh();
+
+    return {
+      success: true,
+      status: "COMPLETE" as const,
+      summary: result.data.summary,
+    };
   }
 
   return (
@@ -192,7 +203,7 @@ export function NextStepCard({
           isOpen={Boolean(pendingQuestions)}
           questions={pendingQuestions}
           onSubmit={handleQuestionnaireSubmit}
-          isSubmitting={isSubmittingAnswers}
+          onClose={() => setPendingQuestions(null)}
         />
       )}
     </>

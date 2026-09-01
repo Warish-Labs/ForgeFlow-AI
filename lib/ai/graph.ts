@@ -121,29 +121,21 @@ export async function requirementSynthesisNode(state: ForgeFlowState) {
   }
 
   // Live LLM Mode
+  const userAnswersFormatted = Object.keys(userAnswers).length > 0
+    ? Object.entries(userAnswers)
+        .map(([key, val]) => `- Decision [${key}]: ${Array.isArray(val) ? val.join(", ") : String(val)}`)
+        .join("\n")
+    : "No user decisions provided yet.";
+
   const systemPrompt = `You are an elite Software Architect and Systems Analyst executing an interactive requirement synthesis pipeline for software blueprints.
 
 You are NOT restricted to what the user provided — the user's input is a starting point, not a ceiling.
 Analyze the given software vision and any user answers provided so far.
 
 CRITICAL STACK GROUNDING RULES:
-1. If the vision description or project input already specifies explicit technology choices (e.g. Next.js, TypeScript, PostgreSQL, Prisma, pgvector, Redis, BullMQ, Docker, Tailwind CSS, OpenAI API, LangGraph), HONOR those choices.
-2. Do NOT ask redundant clarification questions about choices already explicitly specified or implied by the user's target stack.
-3. If there are genuine, unstated technical ambiguities that have NOT yet been answered, return a JSON object with status "NEEDS_INPUT":
-{
-  "status": "NEEDS_INPUT",
-  "questions": [
-    {
-      "id": "ambiguity_id",
-      "type": "single_select",
-      "prompt": "Clear question addressing the exact technical ambiguity in THIS project",
-      "options": ["Option 1", "Option 2"],
-      "reasoning": "Technical rationale explaining why this decision matters"
-    }
-  ]
-}
-
-4. If the user's input is ALREADY sufficient, OR if user answers have resolved ambiguities, return the finalized blueprint JSON with status "COMPLETE":
+1. If the vision description or user answers specify explicit technology choices (e.g. Next.js, TypeScript, PostgreSQL, Prisma, pgvector, Redis, BullMQ, Docker, Tailwind CSS, OpenAI API, Vercel), HONOR those choices without asking redundant questions.
+2. DO NOT ask questions about choices already resolved in the "User Decisions Provided So Far" section.
+3. If user decisions have resolved the primary ambiguities, or if user input is sufficient, return status "COMPLETE" with the full blueprint JSON:
 {
   "status": "COMPLETE",
   "problemStatement": "Clear concise 1-2 sentence problem description tailored to this vision",
@@ -160,14 +152,28 @@ CRITICAL STACK GROUNDING RULES:
   ],
   "assumptions": ["Assumption 1", "Assumption 2"],
   "openQuestions": []
+}
+
+4. ONLY if critical technical ambiguities remain that have NOT been answered yet, return status "NEEDS_INPUT":
+{
+  "status": "NEEDS_INPUT",
+  "questions": [
+    {
+      "id": "unique_ambiguity_id",
+      "type": "single_select",
+      "prompt": "Clear question addressing the exact technical ambiguity in THIS project",
+      "options": ["Option 1", "Option 2"],
+      "reasoning": "Technical rationale explaining why this decision matters"
+    }
+  ]
 }`;
 
   const userPrompt = `Project Name: ${projectName}
 Vision Description:
 ${ideaText}
 
-User Answers Provided So Far:
-${JSON.stringify(userAnswers)}`;
+User Decisions Provided So Far (CONFIRMED & RESOLVED):
+${userAnswersFormatted}`;
 
   try {
     const rawText = await invokeLlmWithFallback(
@@ -178,29 +184,56 @@ ${JSON.stringify(userAnswers)}`;
     const cleaned = cleanJsonText(rawText);
     const parsed = JSON.parse(cleaned);
 
+    // If LLM asks for additional input
     if (
-      (parsed.status === "NEEDS_INPUT" || parsed.status === "NEEDS_INPUT") &&
+      parsed.status === "NEEDS_INPUT" &&
       Array.isArray(parsed.questions) &&
-      parsed.questions.length > 0 &&
-      Object.keys(userAnswers).length === 0
+      parsed.questions.length > 0
     ) {
-      return {
-        result: null,
-        pendingQuestions: parsed.questions,
-        userAnswers,
-        status: "NEEDS_INPUT",
-        error: null,
-      };
+      // Filter out any question that has already been answered in userAnswers
+      const unanswered = parsed.questions.filter((q: QuestionItem) => {
+        if (!q.id) return true;
+        return userAnswers[q.id] === undefined;
+      });
+
+      if (unanswered.length > 0) {
+        return {
+          result: null,
+          pendingQuestions: unanswered,
+          userAnswers,
+          status: "NEEDS_INPUT",
+          error: null,
+        };
+      }
     }
 
+    // Otherwise, parse as complete synthesis result
     const validated = requirementSynthesisSchema.parse(parsed);
-    // Combine stack array aliases
+    
+    // Merge user-selected tech options into suggestedTechStack
+    const userSelectedStackItems: string[] = [];
+    Object.values(userAnswers).forEach((val) => {
+      if (typeof val === "string" && val.length < 50) {
+        userSelectedStackItems.push(val);
+      } else if (Array.isArray(val)) {
+        val.forEach((item) => {
+          if (typeof item === "string" && item.length < 50) userSelectedStackItems.push(item);
+        });
+      }
+    });
+
     const combinedStack = Array.from(
-      new Set([...(validated.suggestedTechStack || []), ...(validated.suggestedStack || [])])
+      new Set([
+        ...(validated.suggestedTechStack || []),
+        ...(validated.suggestedStack || []),
+        ...userSelectedStackItems,
+      ])
     );
+
     if (combinedStack.length === 0) {
       combinedStack.push("Next.js", "TypeScript", "PostgreSQL", "Prisma", "Tailwind CSS");
     }
+
     validated.suggestedTechStack = combinedStack;
     validated.suggestedStack = combinedStack;
 

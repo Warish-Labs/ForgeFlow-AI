@@ -327,6 +327,8 @@ export async function analyzeProjectAction(
   }
 }
 
+import { answerSubmissionSchema, validateQuestionnaireAnswers } from "@/lib/validations/ai";
+
 /**
  * Resume AI Synthesis when user answers agent's questions
  */
@@ -353,7 +355,17 @@ export async function resumeProjectSynthesisAction(
     };
   }
 
+  // 1. Schema Payload Validation
+  const payloadResult = answerSubmissionSchema.safeParse({ projectId, answers });
+  if (!payloadResult.success) {
+    return {
+      success: false,
+      error: { code: "INVALID_PAYLOAD", message: "Malformed submission payload" },
+    };
+  }
+
   try {
+    // 2. Project Ownership Check
     const project = await prisma.project.findFirst({
       where: { id: projectId, ownerId: userId },
     });
@@ -365,7 +377,52 @@ export async function resumeProjectSynthesisAction(
       };
     }
 
-    return await analyzeProjectAction(projectId, answers);
+    // 3. Server-side Question & Answer Validation
+    const openQuestions = Array.isArray(project.openQuestions)
+      ? (project.openQuestions as QuestionItem[])
+      : [];
+
+    if (openQuestions.length > 0) {
+      const validation = validateQuestionnaireAnswers(openQuestions, answers);
+      if (!validation.isValid) {
+        return {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: validation.generalError || "Submitted answers failed server-side validation.",
+          },
+        };
+      }
+    }
+
+    // 4. Merge and Persist Answers in Database BEFORE Resuming AI Synthesis
+    const existingUserAnswers = (project.userAnswers as Record<string, unknown>) || {};
+    const mergedUserAnswers = { ...existingUserAnswers, ...answers };
+
+    const newAssumptions: string[] = [];
+    for (const q of openQuestions) {
+      if (answers[q.id] !== undefined) {
+        const valStr = Array.isArray(answers[q.id])
+          ? (answers[q.id] as string[]).join(", ")
+          : String(answers[q.id]);
+        newAssumptions.push(`${q.prompt}: ${valStr}`);
+      }
+    }
+    const currentAssumptions = Array.isArray(project.assumptions) ? (project.assumptions as string[]) : [];
+    const updatedAssumptions = Array.from(new Set([...currentAssumptions, ...newAssumptions]));
+
+    await prisma.project.update({
+      where: { id: projectId },
+      data: {
+        userAnswers: mergedUserAnswers as unknown as Prisma.InputJsonValue,
+        assumptions: updatedAssumptions,
+      },
+    });
+
+    logAiStage("ANSWERS_PERSISTED", { projectId, count: Object.keys(answers).length });
+
+    // 5. Resume AI Synthesis with Canonical Persisted Answers
+    return await analyzeProjectAction(projectId, mergedUserAnswers);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[AI] Error in resumeProjectSynthesisAction:", error);

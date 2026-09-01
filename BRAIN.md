@@ -40,7 +40,11 @@ ForgeFlow AI is a Next.js 16.2.9 app that turns a one-line software idea into a 
   - Added atomic Prisma transaction persisting `Project.problemStatement`, `Project.techStack`, `Project.requirements` (`functional` & `nonFunctional`), `Project.assumptions`, `Project.openQuestions`, `Project.status: "ARCHITECTURE"`, `Feature` records, stack `Decision` ADR, and `AuditLog`.
   - Added safe structured stage logging (`ANALYZE_START` -> `ANALYZE_COMPLETE`).
   - Updated UI buttons (`AnalyzeProjectButton.tsx`) to show compact result summary (`✓ Requirements: X, ✓ Features: Y, ✓ Assumptions: Z`) and refresh UI components.
-  - Handled question resume flow (`NEEDS_INPUT` modal -> `resumeProjectSynthesisAction` -> `COMPLETE`).
+- **Questionnaire Submit & Synthesis Resume Flow Overhaul**:
+  - **Explicit State Machine**: Implemented `IDLE` -> `SELECTING` -> `VALIDATION_ERROR` -> `SUBMITTING` -> `SAVING_ANSWERS` -> `RESUMING_SYNTHESIS` -> `SUCCESS` / `NEEDS_MORE_INPUT` / `FAILURE` state machine in `AskUserQuestionnaireModal.tsx`.
+  - **Validation & Errors**: Added client-side (`validateQuestionnaireAnswers`) and server-side (`answerSubmissionSchema`) validation. Top banner error displayed for unanswered questions with per-question error markers. Modal never closes prematurely on validation error or server failure.
+  - **Persistence & Context**: Saved canonical user answers into `Project.userAnswers` and merged into `Project.assumptions`. Passed canonical answers into LangGraph `createSynthesisGraph().invoke(...)`, explicitly formatting them into the AI prompt and filtering out already-resolved questions to prevent re-asking decisions.
+  - **Authoritative Modal Closure & State Refresh**: Modal closes ONLY after server returns authoritative `status: "COMPLETE"`. Displays completion metrics summary, refreshes Next.js router cache (`router.refresh()`), and updates overview stats.
 
 - **Canonical Usage Period Calculator (`lib/services/usagePeriod.ts`)**:
   - Implemented strict UTC date boundary helpers (`getStartOfTodayUTC`, `getEndOfTodayUTC`, `getStartOfMonthUTC`, `getStartOfNextMonthUTC`).

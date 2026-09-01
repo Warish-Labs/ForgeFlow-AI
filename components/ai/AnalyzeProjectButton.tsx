@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { analyzeProjectAction, resumeProjectSynthesisAction } from "@/lib/actions/ai";
-import { AskUserQuestionnaireModal } from "@/components/ai/AskUserQuestionnaireModal";
+import { AskUserQuestionnaireModal, QuestionnaireSubmitResult } from "@/components/ai/AskUserQuestionnaireModal";
 import { QuestionItem } from "@/lib/validations/ai";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
-import { SparklesIcon, Loader2Icon, AlertCircleIcon, XIcon, CheckCircle2Icon } from "lucide-react";
+import { SparklesIcon, Loader2Icon, AlertCircleIcon, XIcon, CheckCircle2Icon, HelpCircleIcon } from "lucide-react";
 
 interface AnalyzeProjectButtonProps {
   projectId: string;
@@ -24,8 +24,9 @@ export function AnalyzeProjectButton({
 }: AnalyzeProjectButtonProps) {
   const router = useRouter();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [stepText, setStepText] = useState("Analyze Vision");
+  const [buttonLabel, setButtonLabel] = useState("Analyze Vision");
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [questionRound, setQuestionRound] = useState(1);
   const [successSummary, setSuccessSummary] = useState<{
     functionalCount: number;
     nonFunctionalCount: number;
@@ -36,29 +37,26 @@ export function AnalyzeProjectButton({
 
   // Ask-User Question Modal state
   const [pendingQuestions, setPendingQuestions] = useState<QuestionItem[] | null>(null);
-  const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false);
 
   async function handleAnalyze() {
     setIsAnalyzing(true);
     setAnalysisError(null);
     setSuccessSummary(null);
-    setStepText("1/3 Evaluating Architecture Stack...");
-
-    const t1 = setTimeout(() => setStepText("2/3 Synthesizing Dependencies..."), 1200);
+    setButtonLabel("Synthesizing...");
 
     const result = await analyzeProjectAction(projectId);
 
-    clearTimeout(t1);
     setIsAnalyzing(false);
-    setStepText("Re-analyze Vision");
 
     if (!result.success) {
       setAnalysisError(result.error.message);
+      setButtonLabel("Retry Analysis");
       return;
     }
 
     if (result.data.status === "NEEDS_INPUT" && result.data.questions) {
       setPendingQuestions(result.data.questions);
+      setButtonLabel("Waiting for Decisions");
       return;
     }
 
@@ -66,24 +64,34 @@ export function AnalyzeProjectButton({
       setSuccessSummary(result.data.summary);
     }
 
+    setButtonLabel("Re-analyze Vision");
     router.refresh();
   }
 
-  async function handleQuestionnaireSubmit(answers: Record<string, unknown>) {
-    setIsSubmittingAnswers(true);
+  async function handleQuestionnaireSubmit(answers: Record<string, unknown>): Promise<QuestionnaireSubmitResult> {
     setAnalysisError(null);
     setSuccessSummary(null);
+
     const result = await resumeProjectSynthesisAction(projectId, answers);
-    setIsSubmittingAnswers(false);
 
     if (!result.success) {
       setAnalysisError(result.error.message);
-      return;
+      setButtonLabel("Retry Analysis");
+      return {
+        success: false,
+        error: { code: result.error.code, message: result.error.message },
+      };
     }
 
     if (result.data.status === "NEEDS_INPUT" && result.data.questions) {
       setPendingQuestions(result.data.questions);
-      return;
+      setQuestionRound((prev) => prev + 1);
+      setButtonLabel("Waiting for Decisions");
+      return {
+        success: true,
+        status: "NEEDS_INPUT",
+        questions: result.data.questions,
+      };
     }
 
     if (result.data.summary) {
@@ -91,7 +99,14 @@ export function AnalyzeProjectButton({
     }
 
     setPendingQuestions(null);
+    setButtonLabel("Re-analyze Vision");
     router.refresh();
+
+    return {
+      success: true,
+      status: "COMPLETE",
+      summary: result.data.summary,
+    };
   }
 
   return (
@@ -100,7 +115,7 @@ export function AnalyzeProjectButton({
         <Button
           variant={variant}
           size={size}
-          onClick={handleAnalyze}
+          onClick={pendingQuestions ? () => setPendingQuestions(pendingQuestions) : handleAnalyze}
           disabled={isAnalyzing}
           className="inline-flex items-center gap-2 font-medium transition-all"
           title="Analyze software vision idea using AI synthesis"
@@ -108,12 +123,17 @@ export function AnalyzeProjectButton({
           {isAnalyzing ? (
             <>
               <Loader2Icon className="h-4 w-4 animate-spin text-[var(--accent-cyan)]" />
-              <span>{stepText}</span>
+              <span>{buttonLabel}</span>
+            </>
+          ) : pendingQuestions ? (
+            <>
+              <HelpCircleIcon className="h-4 w-4 text-amber-400" />
+              <span className="text-amber-300 font-semibold">{buttonLabel}</span>
             </>
           ) : (
             <>
               <SparklesIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
-              <span>{stepText}</span>
+              <span>{buttonLabel}</span>
             </>
           )}
         </Button>
@@ -169,10 +189,10 @@ export function AnalyzeProjectButton({
           isOpen={Boolean(pendingQuestions)}
           questions={pendingQuestions}
           onSubmit={handleQuestionnaireSubmit}
-          isSubmitting={isSubmittingAnswers}
+          onClose={() => setPendingQuestions(null)}
+          questionRound={questionRound}
         />
       )}
     </div>
   );
 }
-
