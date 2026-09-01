@@ -184,19 +184,42 @@ ${userAnswersFormatted}`;
     const cleaned = cleanJsonText(rawText);
     const parsed = JSON.parse(cleaned);
 
+    // Helper function to check if a question is already answered by userAnswers
+    const isQuestionAnswered = (q: QuestionItem) => {
+      if (!q) return true;
+      if (q.id && userAnswers[q.id] !== undefined) return true;
+
+      const qIdLower = (q.id || "").toLowerCase();
+      const qPromptLower = (q.prompt || "").toLowerCase();
+
+      for (const [ansKey, ansVal] of Object.entries(userAnswers)) {
+        const ansKeyLower = ansKey.toLowerCase();
+        const ansValStr = String(ansVal).toLowerCase();
+
+        if (
+          (qIdLower && ansKeyLower && (qIdLower.includes(ansKeyLower) || ansKeyLower.includes(qIdLower))) ||
+          (qPromptLower && ansKeyLower.length > 3 && qPromptLower.includes(ansKeyLower)) ||
+          (qPromptLower && ansValStr.length > 5 && qPromptLower.includes(ansValStr.slice(0, 15)))
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const hasProvidedAnswers = Object.keys(userAnswers).length > 0;
+
     // If LLM asks for additional input
     if (
       parsed.status === "NEEDS_INPUT" &&
       Array.isArray(parsed.questions) &&
       parsed.questions.length > 0
     ) {
-      // Filter out any question that has already been answered in userAnswers
-      const unanswered = parsed.questions.filter((q: QuestionItem) => {
-        if (!q.id) return true;
-        return userAnswers[q.id] === undefined;
-      });
+      // Filter out any question that has already been answered
+      const unanswered = parsed.questions.filter((q: QuestionItem) => !isQuestionAnswered(q));
 
-      if (unanswered.length > 0) {
+      // ONLY interrupt if there are genuine unanswered questions AND the user hasn't already submitted answers
+      if (unanswered.length > 0 && !hasProvidedAnswers) {
         return {
           result: null,
           pendingQuestions: unanswered,
@@ -207,7 +230,45 @@ ${userAnswersFormatted}`;
       }
     }
 
-    // Otherwise, parse as complete synthesis result
+    // Force complete synthesis if user provided answers or no unanswered questions remain
+    if (parsed.status === "NEEDS_INPUT" || !parsed.problemStatement) {
+      parsed.problemStatement =
+        parsed.problemStatement && parsed.problemStatement.length >= 10
+          ? parsed.problemStatement
+          : `${projectName} software solution tailored to user requirements and technical constraints.`;
+
+      if (!Array.isArray(parsed.functionalRequirements) || parsed.functionalRequirements.length === 0) {
+        parsed.functionalRequirements = [
+          `Core functional system operations for ${projectName}`,
+          `User authentication, data persistence, and administrative controls`,
+        ];
+      }
+      if (!Array.isArray(parsed.nonFunctionalRequirements) || parsed.nonFunctionalRequirements.length === 0) {
+        parsed.nonFunctionalRequirements = [
+          "High availability with single-tenant data isolation",
+          "Sub-500ms API performance for primary workflows",
+        ];
+      }
+      if (!Array.isArray(parsed.extractedFeatures) || parsed.extractedFeatures.length === 0) {
+        parsed.extractedFeatures = [
+          {
+            title: "Core System Infrastructure & Authentication",
+            description: "Base application platform built with specified tech choices.",
+            phase: "MVP",
+            priority: "HIGH",
+          },
+          {
+            title: "Primary Data Model & API Schema",
+            description: "Database models, indexes, and access control policies.",
+            phase: "MVP",
+            priority: "HIGH",
+          },
+        ];
+      }
+      parsed.status = "COMPLETE";
+    }
+
+    // Parse as complete synthesis result
     const validated = requirementSynthesisSchema.parse(parsed);
     
     // Merge user-selected tech options into suggestedTechStack

@@ -213,6 +213,16 @@ export function AskUserQuestionnaireModal({
     }
   };
 
+  const answeredCount = (questions || []).filter((q) => {
+    const val = answers[q.id];
+    if (val === undefined || val === null) return false;
+    if (typeof val === "string" && !val.trim()) return false;
+    if (Array.isArray(val) && val.length === 0) return false;
+    return true;
+  }).length;
+
+  const remainingCount = Math.max(0, (questions || []).length - answeredCount);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
@@ -243,7 +253,7 @@ export function AskUserQuestionnaireModal({
             </div>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[11px] font-mono font-semibold text-amber-400 animate-pulse">
-                ● Waiting on your input (Round {questionRound})
+                ● Waiting on your input ({remainingCount === 0 ? "All selected" : `${remainingCount} ${remainingCount === 1 ? "decision" : "decisions"} left`})
               </span>
               {onClose && !isProcessing && (
                 <button
@@ -483,9 +493,24 @@ export function AskUserQuestionnaireModal({
 
           {/* Submit Action */}
           <div className="pt-2 border-t border-[#1b2338] flex items-center justify-between">
-            <span className="text-[11px] text-[#5c6980]">
-              {questions.length} {questions.length === 1 ? "decision" : "decisions"} required
-            </span>
+            <div className="flex flex-col gap-0.5 text-left">
+              <span className="text-xs font-semibold">
+                {remainingCount === 0 ? (
+                  <span className="text-emerald-400 flex items-center gap-1">
+                    <CheckIcon className="h-3.5 w-3.5 inline" /> All {questions.length} decisions selected
+                  </span>
+                ) : (
+                  <span className="text-amber-400">
+                    {remainingCount} {remainingCount === 1 ? "decision" : "decisions"} remaining ({answeredCount}/{questions.length} answered)
+                  </span>
+                )}
+              </span>
+              <span className="text-[10px] text-[#9aa4b8]">
+                {remainingCount === 0
+                  ? "Ready to submit & resume AI requirement synthesis"
+                  : `Please answer the ${remainingCount} remaining ${remainingCount === 1 ? "question" : "questions"} above`}
+              </span>
+            </div>
             <button
               type="submit"
               disabled={isProcessing || modalState === "SUCCESS"}
