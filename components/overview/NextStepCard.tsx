@@ -132,6 +132,7 @@ export function NextStepCard({
       };
     }
 
+    setPendingQuestions(null);
     router.refresh();
 
     return {

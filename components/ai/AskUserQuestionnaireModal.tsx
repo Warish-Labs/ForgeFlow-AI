@@ -88,7 +88,7 @@ export function AskUserQuestionnaireModal({
     }
   }, [questionsKey]);
 
-  if (!isOpen || !questions || questions.length === 0) return null;
+  if (!isOpen || !questions || questions.length === 0 || (modalState as string) === "SUCCESS") return null;
 
   const isProcessing =
     modalState === "SUBMITTING" ||
@@ -199,10 +199,7 @@ export function AskUserQuestionnaireModal({
         if (res.summary) {
           setSuccessSummary(res.summary);
         }
-        // Authoritative auto-close after brief visual success confirmation
-        setTimeout(() => {
-          if (onClose) onClose();
-        }, 800);
+        if (onClose) onClose();
       }
     } catch (err: any) {
       setModalState("FAILURE");

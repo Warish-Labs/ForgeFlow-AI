@@ -143,7 +143,7 @@ export async function analyzeProjectAction(
         ideaText: project.ideaText,
         userAnswers: userAnswers || {},
       },
-      { configurable: { thread_id: projectId } }
+      { configurable: { thread_id: `${projectId}_${Date.now()}` } }
     );
 
     logAiStage("LLM_COMPLETED", { projectId, status: stateResult.status });
