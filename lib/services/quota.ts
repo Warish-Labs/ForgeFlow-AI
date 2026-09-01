@@ -2,15 +2,25 @@ import { prisma } from "@/lib/db/prisma";
 import { PLAN_LIMITS, ERROR_CODES } from "@/lib/config/plans";
 import { checkIsSuperAdminAction } from "@/lib/auth/admin";
 import { logAuditEventAction } from "@/lib/services/audit";
+import {
+  getStartOfTodayUTC,
+  getEndOfTodayUTC,
+  getStartOfMonthUTC,
+  getFormattedMonthResetLabel,
+} from "./usagePeriod";
 
 export interface QuotaUsageResult {
   isAdmin?: boolean;
   projectsCount: number;
   maxProjects: number;
-  totalTokens: number;
-  maxTokens: number;
-  totalRequests: number;
-  maxRequests: number;
+  totalTokens: number; // Today's tokens for daily quota
+  tokensToday: number;
+  tokensThisMonth: number;
+  maxTokens: number; // Daily max token limit
+  totalRequests: number; // Today's requests for daily quota
+  requestsToday: number;
+  requestsThisMonth: number;
+  maxRequests: number; // Daily max request limit
   remainingTokens: number;
   remainingRequests: number;
   resetDate: string; // Daily reset: "Daily at 00:00 UTC"
@@ -35,13 +45,14 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
     where: { ownerId: userId },
   });
 
-  // Calculate daily 24-hour UTC reset window for LLMs (Groq / Gemini)
+  // Calculate UTC period boundaries
   const now = new Date();
-  const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-  const endOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+  const startOfToday = getStartOfTodayUTC(now);
+  const endOfToday = getEndOfTodayUTC(now);
+  const startOfMonth = getStartOfMonthUTC(now);
 
-  // Aggregate LLM Usage today (Groq & Gemini)
-  const usageAggregate = await prisma.aiUsageLog.aggregate({
+  // Aggregate LLM Usage Today (Groq & Gemini)
+  const todayAggregate = await prisma.aiUsageLog.aggregate({
     where: {
       userId,
       provider: { in: ["groq", "gemini"] },
@@ -58,14 +69,33 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
     },
   });
 
-  const totalTokens = usageAggregate._sum.totalTokens || 0;
-  const totalRequests = usageAggregate._count.id || 0;
+  // Aggregate LLM Usage This Month (Groq & Gemini)
+  const monthAggregate = await prisma.aiUsageLog.aggregate({
+    where: {
+      userId,
+      provider: { in: ["groq", "gemini"] },
+      createdAt: {
+        gte: startOfMonth,
+      },
+    },
+    _sum: {
+      totalTokens: true,
+    },
+    _count: {
+      id: true,
+    },
+  });
 
-  const remainingTokens = Math.max(0, maxTokens - totalTokens);
-  const remainingRequests = Math.max(0, maxRequests - totalRequests);
+  const tokensToday = todayAggregate._sum.totalTokens || 0;
+  const requestsToday = todayAggregate._count.id || 0;
+  const tokensThisMonth = monthAggregate._sum.totalTokens || 0;
+  const requestsThisMonth = monthAggregate._count.id || 0;
 
-  const tokenUsagePercent = (totalTokens / maxTokens) * 100;
-  const isExhausted = totalTokens >= maxTokens || totalRequests >= maxRequests;
+  const remainingTokens = Math.max(0, maxTokens - tokensToday);
+  const remainingRequests = Math.max(0, maxRequests - requestsToday);
+
+  const tokenUsagePercent = (tokensToday / maxTokens) * 100;
+  const isExhausted = tokensToday >= maxTokens || requestsToday >= maxRequests;
 
   let status: "healthy" | "warning" | "critical" | "exhausted" = "healthy";
   if (isExhausted) {
@@ -78,10 +108,7 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
 
   const resetDate = "Daily at 00:00 UTC";
 
-  // Calculate monthly reset window for Tavily credits (Resets on 1st of month)
-  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
-  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
-
+  // Calculate monthly Tavily credits (Resets on 1st of month)
   const tavilyCount = await prisma.aiUsageLog.count({
     where: {
       userId,
@@ -94,8 +121,7 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
 
   const remainingTavilySearches = Math.max(0, maxTavilySearches - tavilyCount);
   const isTavilyExhausted = tavilyCount >= maxTavilySearches;
-
-  const tavilyResetDate = `1st of ${nextMonth.toLocaleString("en-US", { month: "short", timeZone: "UTC" })}`;
+  const tavilyResetDate = getFormattedMonthResetLabel(now);
 
   const { isAdmin } = await checkIsSuperAdminAction();
 
@@ -103,9 +129,13 @@ export async function getUserQuotaUsageAction(userId: string): Promise<QuotaUsag
     isAdmin,
     projectsCount,
     maxProjects: isAdmin ? 999 : maxProjects,
-    totalTokens,
+    totalTokens: tokensToday,
+    tokensToday,
+    tokensThisMonth,
     maxTokens: isAdmin ? 10000000 : maxTokens,
-    totalRequests,
+    totalRequests: requestsToday,
+    requestsToday,
+    requestsThisMonth,
     maxRequests: isAdmin ? 999999 : maxRequests,
     remainingTokens: isAdmin ? 10000000 : remainingTokens,
     remainingRequests: isAdmin ? 999999 : remainingRequests,

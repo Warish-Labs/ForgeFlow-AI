@@ -7,7 +7,7 @@ import { analyzeProjectAction, resumeProjectSynthesisAction } from "@/lib/action
 import { AskUserQuestionnaireModal } from "@/components/ai/AskUserQuestionnaireModal";
 import { QuestionItem } from "@/lib/validations/ai";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
-import { SparklesIcon, Loader2Icon, AlertCircleIcon, XIcon } from "lucide-react";
+import { SparklesIcon, Loader2Icon, AlertCircleIcon, XIcon, CheckCircle2Icon } from "lucide-react";
 
 interface AnalyzeProjectButtonProps {
   projectId: string;
@@ -26,6 +26,13 @@ export function AnalyzeProjectButton({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [stepText, setStepText] = useState("Analyze Vision");
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [successSummary, setSuccessSummary] = useState<{
+    functionalCount: number;
+    nonFunctionalCount: number;
+    featuresCount: number;
+    assumptionsCount: number;
+    questionsCount: number;
+  } | null>(null);
 
   // Ask-User Question Modal state
   const [pendingQuestions, setPendingQuestions] = useState<QuestionItem[] | null>(null);
@@ -34,6 +41,7 @@ export function AnalyzeProjectButton({
   async function handleAnalyze() {
     setIsAnalyzing(true);
     setAnalysisError(null);
+    setSuccessSummary(null);
     setStepText("1/3 Evaluating Architecture Stack...");
 
     const t1 = setTimeout(() => setStepText("2/3 Synthesizing Dependencies..."), 1200);
@@ -42,7 +50,7 @@ export function AnalyzeProjectButton({
 
     clearTimeout(t1);
     setIsAnalyzing(false);
-    setStepText("Analyze Vision");
+    setStepText("Re-analyze Vision");
 
     if (!result.success) {
       setAnalysisError(result.error.message);
@@ -54,12 +62,17 @@ export function AnalyzeProjectButton({
       return;
     }
 
+    if (result.data.summary) {
+      setSuccessSummary(result.data.summary);
+    }
+
     router.refresh();
   }
 
-  async function handleQuestionnaireSubmit(answers: Record<string, any>) {
+  async function handleQuestionnaireSubmit(answers: Record<string, unknown>) {
     setIsSubmittingAnswers(true);
     setAnalysisError(null);
+    setSuccessSummary(null);
     const result = await resumeProjectSynthesisAction(projectId, answers);
     setIsSubmittingAnswers(false);
 
@@ -71,6 +84,10 @@ export function AnalyzeProjectButton({
     if (result.data.status === "NEEDS_INPUT" && result.data.questions) {
       setPendingQuestions(result.data.questions);
       return;
+    }
+
+    if (result.data.summary) {
+      setSuccessSummary(result.data.summary);
     }
 
     setPendingQuestions(null);
@@ -96,7 +113,7 @@ export function AnalyzeProjectButton({
           ) : (
             <>
               <SparklesIcon className="h-4 w-4 text-[var(--accent-cyan)]" />
-              <span>Analyze Vision</span>
+              <span>{stepText}</span>
             </>
           )}
         </Button>
@@ -111,6 +128,26 @@ export function AnalyzeProjectButton({
           />
         )}
       </div>
+
+      {successSummary && (
+        <div className="my-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-xs text-emerald-300 flex items-center justify-between gap-3 shadow-lg w-full max-w-md">
+          <div className="flex items-center gap-2">
+            <CheckCircle2Icon className="h-4 w-4 text-emerald-400 shrink-0" />
+            <div>
+              <span className="font-bold text-emerald-200">Analysis Complete!</span>
+              <div className="text-[11px] text-emerald-300/90 font-mono mt-0.5">
+                ✓ Requirements: {successSummary.functionalCount + successSummary.nonFunctionalCount} ({successSummary.functionalCount} functional, {successSummary.nonFunctionalCount} non-functional) • Features: {successSummary.featuresCount} • Assumptions: {successSummary.assumptionsCount}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setSuccessSummary(null)}
+            className="text-emerald-400 hover:text-white"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {analysisError && (
         <div className="my-1 rounded-xl border border-rose-500/40 bg-rose-500/10 p-2.5 text-xs text-rose-300 flex items-center justify-between gap-3 shadow-lg">
@@ -138,3 +175,4 @@ export function AnalyzeProjectButton({
     </div>
   );
 }
+

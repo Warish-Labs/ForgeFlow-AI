@@ -28,8 +28,12 @@ export const requirementSynthesisSchema = z.object({
     .string()
     .min(10, "Problem statement must be at least 10 characters"),
   suggestedStack: z.preprocess(
-    (val) => (typeof val === "string" ? [val] : val),
-    z.array(z.string()).min(1, "Must suggest at least 1 technology")
+    (val) => (typeof val === "string" ? [val] : Array.isArray(val) ? val : []),
+    z.array(z.string()).default([])
+  ),
+  suggestedTechStack: z.preprocess(
+    (val) => (typeof val === "string" ? [val] : Array.isArray(val) ? val : []),
+    z.array(z.string()).default([])
   ),
   functionalRequirements: z.preprocess(
     (val) => (typeof val === "string" ? [val] : val),
@@ -42,6 +46,11 @@ export const requirementSynthesisSchema = z.object({
   extractedFeatures: z
     .array(extractedFeatureSchema)
     .min(1, "Must extract at least 1 feature"),
+  assumptions: z.preprocess(
+    (val) => (typeof val === "string" ? [val] : Array.isArray(val) ? val : []),
+    z.array(z.string()).default([])
+  ),
+  openQuestions: z.array(z.unknown()).default([]),
 });
 
 export const questionTypeSchema = z.enum(["single_select", "multi_select", "free_text", "yes_no"]);

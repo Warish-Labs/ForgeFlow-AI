@@ -69,6 +69,11 @@ export interface AdminMetricsResult {
 
 // ─── Overview Metrics ─────────────────────────────────────────────────────────
 
+import {
+  getStartOfTodayUTC,
+  getStartOfMonthUTC,
+} from "@/lib/services/usagePeriod";
+
 export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
   const { userId: adminUserId } = await requireAdmin();
   if (adminUserId) {
@@ -77,14 +82,14 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
 
   try {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfToday = getStartOfTodayUTC(now);
+    const startOfMonth = getStartOfMonthUTC(now);
 
     const [
       totalProjects, totalLogs, successfulLogs, failedRequests,
       totalTokensAgg, todayAgg, monthAgg,
       providerGroups, operationGroups, modelGroups,
-      userProjectsGroup, userUsageGroup, userDocumentsGroup,
+      userProjectsGroup, userUsageTodayGroup, userUsageMonthGroup, userUsageLifetimeGroup, userDocumentsGroup,
       totalDocuments, totalContactMessages, dbUsers,
     ] = await Promise.all([
       prisma.project.count(),
@@ -98,6 +103,8 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       prisma.aiUsageLog.groupBy({ by: ["operation"], _sum: { totalTokens: true }, _count: { id: true } }),
       prisma.aiUsageLog.groupBy({ by: ["model", "provider"], _sum: { totalTokens: true }, _count: { id: true } }),
       prisma.project.groupBy({ by: ["ownerId"], _count: { id: true } }),
+      prisma.aiUsageLog.groupBy({ by: ["userId"], where: { createdAt: { gte: startOfToday } }, _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
+      prisma.aiUsageLog.groupBy({ by: ["userId"], where: { createdAt: { gte: startOfMonth } }, _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
       prisma.aiUsageLog.groupBy({ by: ["userId"], _sum: { totalTokens: true }, _count: { id: true }, _max: { createdAt: true } }),
       prisma.document.groupBy({ by: ["ownerId"], _count: { id: true } }).catch(() => []),
       prisma.document.count(),
@@ -111,7 +118,7 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
     const allUserIdsSet = new Set<string>();
     dbUsers.forEach((u) => u.id && allUserIdsSet.add(u.id));
     userProjectsGroup.forEach((u) => u.ownerId && allUserIdsSet.add(u.ownerId));
-    userUsageGroup.forEach((u) => u.userId && allUserIdsSet.add(u.userId));
+    userUsageLifetimeGroup.forEach((u) => u.userId && allUserIdsSet.add(u.userId));
     userDocumentsGroup.forEach((u) => u.ownerId && allUserIdsSet.add(u.ownerId));
 
     // Fetch all Clerk users directly to capture newly registered accounts
@@ -142,7 +149,9 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
 
     const userTable = allUserIds.map((uId) => {
       const proj = userProjectsGroup.find((p) => p.ownerId === uId);
-      const usage = userUsageGroup.find((u) => u.userId === uId);
+      const usageToday = userUsageTodayGroup.find((u) => u.userId === uId);
+      const usageMonth = userUsageMonthGroup.find((u) => u.userId === uId);
+      const usageLifetime = userUsageLifetimeGroup.find((u) => u.userId === uId);
       const docGroup = userDocumentsGroup.find((d) => d.ownerId === uId);
       const dbUser = dbUserMap.get(uId);
       const clerk = clerkUsers[uId];
@@ -151,13 +160,17 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
       const email = isDemoOwner ? "demo@forgeflow.ai" : (clerk?.email || dbUser?.email || "");
       const isSuperAdmin = !isDemoOwner && (dbUser?.role === "SUPER_ADMIN" || isSuperAdminEmail(email));
 
-      const tokensUsed = usage?._sum.totalTokens || 0;
-      const remainingTokens = Math.max(0, maxTokens - tokensUsed);
-      const percent = (tokensUsed / maxTokens) * 100;
+      const tokensToday = usageToday?._sum.totalTokens || 0;
+      const tokensThisMonth = usageMonth?._sum.totalTokens || 0;
+      const remainingTokens = Math.max(0, maxTokens - tokensToday);
+      const percent = (tokensToday / maxTokens) * 100;
+
       let status: "healthy" | "warning" | "critical" | "exhausted" = "healthy";
-      if (tokensUsed >= maxTokens) status = "exhausted";
+      if (tokensToday >= maxTokens) status = "exhausted";
       else if (percent >= 90) status = "critical";
       else if (percent >= 75) status = "warning";
+
+      const lastActiveDate = usageLifetime?._max.createdAt || usageMonth?._max.createdAt || usageToday?._max.createdAt;
 
       return {
         userId: uId,
@@ -169,10 +182,11 @@ export async function getAdminMetricsAction(): Promise<AdminMetricsResult> {
         plan: isSuperAdmin ? "ADMIN" : "FREE",
         projectsCount: proj?._count.id || 0,
         documentsCount: docGroup?._count.id || 0,
-        tokensUsed,
+        tokensUsed: tokensToday,
+        tokensThisMonth,
         remainingTokens,
-        requestsCount: usage?._count.id || 0,
-        lastActive: usage?._max.createdAt ? new Date(usage._max.createdAt).toLocaleString() : "N/A",
+        requestsCount: usageLifetime?._count.id || 0,
+        lastActive: lastActiveDate ? new Date(lastActiveDate).toLocaleString() : "N/A",
         status,
       };
     });

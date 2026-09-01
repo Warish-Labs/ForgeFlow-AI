@@ -4,12 +4,22 @@ import { useState } from "react";
 import { updateAssumptionsAndQuestionsAction } from "@/lib/actions/edit";
 import { Button } from "@/components/ui/button";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
-import { HelpCircleIcon, CheckCircleIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { HelpCircleIcon, CheckCircleIcon, PlusIcon, Trash2Icon, Edit2Icon, CheckIcon, XIcon } from "lucide-react";
+
+export interface QuestionItem {
+  id?: string;
+  question?: string;
+  prompt?: string;
+  answer?: string;
+  type?: string;
+  options?: string[];
+  reasoning?: string;
+}
 
 interface AssumptionsAndQuestionsProps {
   projectId: string;
   initialAssumptions?: string[];
-  initialQuestions?: Array<{ question: string; answer: string }>;
+  initialQuestions?: QuestionItem[];
 }
 
 export function AssumptionsAndQuestions({
@@ -19,7 +29,17 @@ export function AssumptionsAndQuestions({
 }: AssumptionsAndQuestionsProps) {
   const [assumptions, setAssumptions] = useState<string[]>(initialAssumptions);
   const [newAssumption, setNewAssumption] = useState("");
-  const [questions, setQuestions] = useState<Array<{ question: string; answer: string }>>(initialQuestions);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+
+  const [questions, setQuestions] = useState<QuestionItem[]>(
+    initialQuestions.map((q) => ({
+      ...q,
+      question: q.question || q.prompt || "Technical decision question",
+      answer: q.answer || "",
+    }))
+  );
+
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -31,6 +51,25 @@ export function AssumptionsAndQuestions({
     await saveToDb(updated, questions);
   }
 
+  function handleStartEditAssumption(idx: number) {
+    setEditingIdx(idx);
+    setEditingText(assumptions[idx] || "");
+  }
+
+  async function handleSaveEditAssumption(idx: number) {
+    if (!editingText.trim()) {
+      await handleRemoveAssumption(idx);
+      setEditingIdx(null);
+      return;
+    }
+    const updated = [...assumptions];
+    updated[idx] = editingText.trim();
+    setAssumptions(updated);
+    setEditingIdx(null);
+    setEditingText("");
+    await saveToDb(updated, questions);
+  }
+
   async function handleRemoveAssumption(idx: number) {
     const updated = assumptions.filter((_, i) => i !== idx);
     setAssumptions(updated);
@@ -39,7 +78,7 @@ export function AssumptionsAndQuestions({
 
   async function handleAnswerChange(idx: number, answer: string) {
     const updated = [...questions];
-    updated[idx].answer = answer;
+    updated[idx] = { ...updated[idx], answer };
     setQuestions(updated);
   }
 
@@ -47,12 +86,16 @@ export function AssumptionsAndQuestions({
     await saveToDb(assumptions, questions);
   }
 
-  async function saveToDb(assumpList: string[], qList: Array<{ question: string; answer: string }>) {
+  async function saveToDb(assumpList: string[], qList: QuestionItem[]) {
     setIsSaving(true);
     setFeedback(null);
+    const formattedQuestions = qList.map((q) => ({
+      question: q.question || q.prompt || "Technical decision question",
+      answer: q.answer || "",
+    }));
     const res = await updateAssumptionsAndQuestionsAction(projectId, {
       assumptions: assumpList,
-      openQuestions: qList,
+      openQuestions: formattedQuestions,
     });
     setIsSaving(false);
     if (res.success) {
@@ -78,28 +121,71 @@ export function AssumptionsAndQuestions({
               text="Assumptions detail confirmed architecture choices (e.g. PostgreSQL + Clerk). You can edit or add custom assumptions anytime."
             />
           </div>
-          {feedback && <span className="text-xs font-mono text-emerald-400">{feedback}</span>}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-[#38b6ff] bg-[#1060ee]/15 px-2 py-0.5 rounded border border-[#1060ee]/30">
+              {assumptions.length} {assumptions.length === 1 ? "assumption" : "assumptions"}
+            </span>
+            {feedback && <span className="text-xs font-mono text-emerald-400">{feedback}</span>}
+          </div>
         </div>
 
         {assumptions.length === 0 ? (
           <p className="text-xs text-[var(--text-muted)] italic py-2">
-            No confirmed assumptions recorded yet. Click Add to create one.
+            No confirmed assumptions recorded yet. Click Add below to create one.
           </p>
         ) : (
           <ul className="space-y-2 text-xs">
             {assumptions.map((item, idx) => (
               <li
                 key={idx}
-                className="group flex items-start justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/60 p-2 text.text-[var(--text-secondary)]"
+                className="group flex items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/60 p-2 text-[var(--text-secondary)]"
               >
-                <span className="leading-relaxed text-[var(--text-primary)]">• {item}</span>
-                <button
-                  onClick={() => handleRemoveAssumption(idx)}
-                  className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-red-400 transition-opacity shrink-0"
-                  title="Remove assumption"
-                >
-                  <Trash2Icon className="h-3.5 w-3.5" />
-                </button>
+                {editingIdx === idx ? (
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <input
+                      type="text"
+                      value={editingText}
+                      onChange={(e) => setEditingText(e.target.value)}
+                      className="flex-1 rounded border border-[var(--border-default)] bg-[var(--navy-900)] px-2 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--accent-cyan)] focus:outline-none"
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleSaveEditAssumption(idx))}
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => handleSaveEditAssumption(idx)}
+                      className="text-emerald-400 hover:text-emerald-300 p-1"
+                      title="Save"
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setEditingIdx(null)}
+                      className="text-[var(--text-muted)] hover:text-white p-1"
+                      title="Cancel"
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="leading-relaxed text-[var(--text-primary)] flex-1">• {item}</span>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleStartEditAssumption(idx)}
+                        className="text-[var(--text-muted)] hover:text-[#38b6ff] p-1"
+                        title="Edit assumption"
+                      >
+                        <Edit2Icon className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveAssumption(idx)}
+                        className="text-[var(--text-muted)] hover:text-red-400 p-1"
+                        title="Remove assumption"
+                      >
+                        <Trash2Icon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -149,11 +235,16 @@ export function AssumptionsAndQuestions({
             {questions.map((q, idx) => (
               <div key={idx} className="rounded-lg border border-[var(--border-subtle)] bg-[var(--navy-800)]/60 p-3 space-y-1.5">
                 <p className="font-medium text-[var(--text-primary)]">
-                  Q{idx + 1}: {q.question}
+                  Q{idx + 1}: {q.question || q.prompt}
                 </p>
+                {q.reasoning && (
+                  <p className="text-[11px] text-[var(--text-muted)] italic">
+                    Reasoning: {q.reasoning}
+                  </p>
+                )}
                 <input
                   type="text"
-                  value={q.answer}
+                  value={q.answer || ""}
                   onChange={(e) => handleAnswerChange(idx, e.target.value)}
                   placeholder="Type your answer here..."
                   className="w-full rounded border border-[var(--border-default)] bg-[var(--navy-900)] px-2.5 py-1 text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-[var(--accent-cyan)] focus:outline-none"

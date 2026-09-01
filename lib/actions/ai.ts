@@ -68,19 +68,34 @@ import { QuestionItem } from "@/lib/validations/ai";
  */
 export async function analyzeProjectAction(
   projectId: string,
-  userAnswers?: Record<string, any>
-): Promise<ActionResult<{ success: boolean; status?: string; questions?: QuestionItem[] }>> {
+  userAnswers?: Record<string, unknown>
+): Promise<ActionResult<{
+  success: boolean;
+  status: "COMPLETE" | "NEEDS_INPUT";
+  questions?: QuestionItem[];
+  summary?: {
+    functionalCount: number;
+    nonFunctionalCount: number;
+    featuresCount: number;
+    assumptionsCount: number;
+    questionsCount: number;
+  };
+}>> {
+  logAiStage("ANALYZE_START", { projectId });
+
   const { userId } = await auth();
   if (!userId) {
+    logAiStage("ANALYZE_FAILED", { stage: "auth_check", category: "auth_error", message: "User not authenticated" });
     return {
       success: false,
       error: { code: "UNAUTHORIZED", message: "You must be signed in to analyze a project" },
     };
   }
 
-  // Quota Guard Check
+  logAiStage("QUOTA_CHECKED", { userId });
   const quotaCheck = await checkUserAiQuotaAction(userId);
   if (!quotaCheck.allowed) {
+    logAiStage("ANALYZE_FAILED", { stage: "quota_check", category: "rate_limit", message: quotaCheck.error?.message });
     return {
       success: false,
       error: quotaCheck.error!,
@@ -95,13 +110,19 @@ export async function analyzeProjectAction(
     });
 
     if (!project) {
+      logAiStage("ANALYZE_FAILED", { stage: "project_load", category: "not_found", message: "Project not found" });
       return {
         success: false,
         error: { code: "NOT_FOUND", message: "Project not found or access denied" },
       };
     }
 
+    logAiStage("PROJECT_LOADED", { projectId, name: project.name });
+    logAiStage("CONTEXT_BUILT", { projectId, hasAnswers: Boolean(userAnswers && Object.keys(userAnswers).length > 0) });
+
     const graph = createSynthesisGraph();
+    logAiStage("LLM_STARTED", { projectId, provider: getLlmProvider() });
+
     const stateResult = await graph.invoke(
       {
         projectId: project.id,
@@ -112,20 +133,25 @@ export async function analyzeProjectAction(
       { configurable: { thread_id: projectId } }
     );
 
+    logAiStage("LLM_COMPLETED", { projectId, status: stateResult.status });
+    logAiStage("RESPONSE_PARSED", { status: stateResult.status });
+
     // Check if graph execution interrupted for user questions
+    const interruptData = (stateResult as { __interrupt__?: Array<{ value?: { pendingQuestions?: QuestionItem[]; questions?: QuestionItem[] } }> }).__interrupt__?.[0]?.value || stateResult;
+    const questions: QuestionItem[] = (interruptData as { pendingQuestions?: QuestionItem[]; questions?: QuestionItem[] }).pendingQuestions || (interruptData as { questions?: QuestionItem[] }).questions || [];
+
     if (
       stateResult.status === "NEEDS_INPUT" ||
-      (stateResult as any).__interrupt__?.length > 0
+      questions.length > 0 ||
+      (stateResult as { __interrupt__?: unknown[] }).__interrupt__?.length
     ) {
-      const interruptData = (stateResult as any).__interrupt__?.[0]?.value || stateResult;
-      const questions: QuestionItem[] = interruptData.questions || [];
-
-      // Save open questions in DB to persist state across refresh
+      logAiStage("QUESTIONS_SAVED", { count: questions.length });
       await prisma.project.update({
         where: { id: projectId },
-        data: { openQuestions: questions as any },
+        data: { openQuestions: questions as unknown as Prisma.InputJsonValue },
       });
 
+      logAiStage("ANALYZE_COMPLETE", { projectId, status: "NEEDS_INPUT" });
       return {
         success: true,
         data: {
@@ -136,36 +162,55 @@ export async function analyzeProjectAction(
       };
     }
 
-    logAiStage("AnalyzeVision", { step: "LLM_COMPLETED", status: stateResult.status });
-
     const synthesis = stateResult.result;
     if (!synthesis) {
-      logAiStage("AnalyzeVision", { step: "FAILED", stage: "response_parsing", reason: "empty_synthesis" });
+      logAiStage("ANALYZE_FAILED", { stage: "response_validation", category: "schema_validation", reason: "empty_synthesis" });
       return {
         success: false,
         error: { code: "AI_ERROR", message: "AI synthesis failed to produce a valid blueprint" },
       };
     }
 
-    logAiStage("AnalyzeVision", { step: "DB_WRITE_STARTED", projectId });
+    logAiStage("RESPONSE_VALIDATED", {
+      functionalCount: synthesis.functionalRequirements.length,
+      nonFunctionalCount: synthesis.nonFunctionalRequirements.length,
+      featuresCount: synthesis.extractedFeatures.length,
+    });
+
+    logAiStage("PERSISTENCE_STARTED", { projectId });
+
+    const techStackToSave =
+      synthesis.suggestedTechStack && synthesis.suggestedTechStack.length > 0
+        ? synthesis.suggestedTechStack
+        : synthesis.suggestedStack && synthesis.suggestedStack.length > 0
+        ? synthesis.suggestedStack
+        : ["Next.js", "TypeScript", "PostgreSQL", "Prisma", "Tailwind CSS"];
+
+    const existingAssumptions = Array.isArray(project.assumptions) ? (project.assumptions as string[]) : [];
+    const combinedAssumptions = Array.from(
+      new Set([...existingAssumptions, ...(synthesis.assumptions || [])])
+    );
 
     await prisma.$transaction(async (tx) => {
-      // 1. Update Project requirements, stack, problemStatement, and status
+      // 1. Update Project requirements, stack, problemStatement, assumptions, and status
       await tx.project.update({
         where: { id: projectId },
         data: {
           problemStatement: synthesis.problemStatement,
-          techStack: synthesis.suggestedStack,
+          techStack: techStackToSave,
           requirements: {
             functional: synthesis.functionalRequirements,
             nonFunctional: synthesis.nonFunctionalRequirements,
           },
-          openQuestions: Prisma.DbNull,
+          assumptions: combinedAssumptions,
+          openQuestions: synthesis.openQuestions && synthesis.openQuestions.length > 0 ? (synthesis.openQuestions as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
           status: "ARCHITECTURE",
         },
       });
 
-      logAiStage("AnalyzeVision", { step: "REQUIREMENTS_SAVED", functionalCount: synthesis.functionalRequirements.length });
+      logAiStage("REQUIREMENTS_SAVED", { count: synthesis.functionalRequirements.length + synthesis.nonFunctionalRequirements.length });
+      logAiStage("ASSUMPTIONS_SAVED", { count: combinedAssumptions.length });
+      logAiStage("QUESTIONS_SAVED", { count: synthesis.openQuestions?.length || 0 });
 
       // 2. Clear old generated features & decisions to avoid duplication on re-synthesis
       await tx.feature.deleteMany({ where: { projectId } });
@@ -178,22 +223,22 @@ export async function analyzeProjectAction(
               projectId,
               title: feat.title,
               description: feat.description || `Core requirement feature for ${feat.title}`,
-              phase: (feat.phase as any) || "MVP",
+              phase: (feat.phase as "MVP" | "PHASE_2" | "PHASE_3") || "MVP",
               status: "planned",
             }))
           : [
               {
                 projectId,
                 title: "Core System Infrastructure & Authentication",
-                description: `Initial architecture stack setup with ${synthesis.suggestedStack.slice(0, 3).join(", ")}.`,
-                phase: "MVP",
+                description: `Initial architecture stack setup with ${techStackToSave.slice(0, 3).join(", ")}.`,
+                phase: "MVP" as const,
                 status: "planned",
               },
               {
                 projectId,
                 title: "Primary Relational Data Schema",
                 description: "Database models, indexes, and single-tenant ownership constraints.",
-                phase: "MVP",
+                phase: "MVP" as const,
                 status: "planned",
               },
             ];
@@ -202,19 +247,21 @@ export async function analyzeProjectAction(
         data: featuresToCreate,
       });
 
-      logAiStage("AnalyzeVision", { step: "FEATURES_SAVED", count: featuresToCreate.length });
+      logAiStage("FEATURES_SAVED", { count: featuresToCreate.length });
 
-      if (synthesis.suggestedStack.length > 0) {
+      if (techStackToSave.length > 0) {
         await tx.decision.create({
           data: {
             projectId,
-            decision: `Selected core technology stack: ${synthesis.suggestedStack.join(", ")}`,
+            decision: `Selected core technology stack: ${techStackToSave.join(", ")}`,
             reasoning: "Chosen to maximize development velocity, maintainability, and data security.",
-            alternative: "Monolithic framework",
+            alternative: "Monolithic legacy architecture",
             affectedAreas: ["Architecture", "Database", "Security"],
           },
         });
       }
+
+      logAiStage("PROJECT_UPDATED", { projectId, status: "ARCHITECTURE" });
     });
 
     const providerName = getLlmProvider();
@@ -231,7 +278,9 @@ export async function analyzeProjectAction(
       status: "success",
     });
 
-    logAiStage("AnalyzeVision", { step: "REVALIDATION", projectId });
+    logAiStage("AUDIT_LOGGED", { projectId, userId, action: "PROJECT_ANALYZED" });
+
+    logAiStage("REVALIDATION_TRIGGERED", { projectId });
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/requirements`);
     revalidatePath(`/projects/${projectId}/features`);
@@ -239,12 +288,34 @@ export async function analyzeProjectAction(
     revalidatePath(`/projects/${projectId}/documents`);
     revalidatePath(`/projects/${projectId}/design`);
     revalidatePath(`/projects/${projectId}/[tab]`, "page");
+    revalidatePath("/dashboard");
 
-    logAiStage("AnalyzeVision", { step: "DONE", projectId });
-    return { success: true, data: { success: true, status: "COMPLETED" } };
-  } catch (error: any) {
+    logAiStage("ANALYZE_COMPLETE", { projectId, status: "COMPLETE" });
+    return {
+      success: true,
+      data: {
+        success: true,
+        status: "COMPLETE",
+        summary: {
+          functionalCount: synthesis.functionalRequirements.length,
+          nonFunctionalCount: synthesis.nonFunctionalRequirements.length,
+          featuresCount: synthesis.extractedFeatures.length,
+          assumptionsCount: combinedAssumptions.length,
+          questionsCount: synthesis.openQuestions?.length || 0,
+        },
+      },
+    };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logAiStage("ANALYZE_FAILED", {
+      stage: "execution",
+      category: "server_error",
+      operation: "analyze",
+      provider: getLlmProvider(),
+      model: getLlmProvider() === "groq" ? getGroqModel() : getGeminiModel(),
+      message: msg,
+    });
     console.error("[AI] Error in analyzeProjectAction:", error);
-    const msg = error?.message || String(error);
     return {
       success: false,
       error: {
@@ -261,8 +332,19 @@ export async function analyzeProjectAction(
  */
 export async function resumeProjectSynthesisAction(
   projectId: string,
-  answers: Record<string, any>
-): Promise<ActionResult<{ success: boolean; status?: string; questions?: QuestionItem[] }>> {
+  answers: Record<string, unknown>
+): Promise<ActionResult<{
+  success: boolean;
+  status: "COMPLETE" | "NEEDS_INPUT";
+  questions?: QuestionItem[];
+  summary?: {
+    functionalCount: number;
+    nonFunctionalCount: number;
+    featuresCount: number;
+    assumptionsCount: number;
+    questionsCount: number;
+  };
+}>> {
   const { userId } = await auth();
   if (!userId) {
     return {
@@ -284,14 +366,15 @@ export async function resumeProjectSynthesisAction(
     }
 
     return await analyzeProjectAction(projectId, answers);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     console.error("[AI] Error in resumeProjectSynthesisAction:", error);
     return {
       success: false,
       error: {
         code: "AI_RESUME_ERROR",
         operation: "analyze",
-        message: `Failed to resume synthesis: ${error?.message || error}`,
+        message: `Failed to resume synthesis: ${msg}`,
       },
     };
   }

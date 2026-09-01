@@ -104,7 +104,7 @@ export async function requirementSynthesisNode(state: ForgeFlowState) {
       return {
         result: mockOutput,
         userAnswers: effectiveAnswers,
-        status: "COMPLETED",
+        status: "COMPLETE",
         error: null,
       };
     }
@@ -115,7 +115,7 @@ export async function requirementSynthesisNode(state: ForgeFlowState) {
     }
     return {
       result: mockOutput,
-      status: "COMPLETED",
+      status: "COMPLETE",
       error: null,
     };
   }
@@ -126,10 +126,10 @@ export async function requirementSynthesisNode(state: ForgeFlowState) {
 You are NOT restricted to what the user provided — the user's input is a starting point, not a ceiling.
 Analyze the given software vision and any user answers provided so far.
 
-INSTRUCTIONS:
-1. Examine the vision text for missing, ambiguous, or critical technical decisions.
-2. STACK GROUNDING RULE: If the vision text or project input already explicitly specifies technology choices (e.g. Next.js, PostgreSQL, Prisma, Redis, Docker, OpenAI), HONOR those choices. Do NOT ask redundant clarification questions about choices already specified by the user.
-3. If there are genuine, unstated technical ambiguities that have NOT yet been answered by the user, return a JSON object with status "NEEDS_INPUT":
+CRITICAL STACK GROUNDING RULES:
+1. If the vision description or project input already specifies explicit technology choices (e.g. Next.js, TypeScript, PostgreSQL, Prisma, pgvector, Redis, BullMQ, Docker, Tailwind CSS, OpenAI API, LangGraph), HONOR those choices.
+2. Do NOT ask redundant clarification questions about choices already explicitly specified or implied by the user's target stack.
+3. If there are genuine, unstated technical ambiguities that have NOT yet been answered, return a JSON object with status "NEEDS_INPUT":
 {
   "status": "NEEDS_INPUT",
   "questions": [
@@ -143,11 +143,11 @@ INSTRUCTIONS:
   ]
 }
 
-4. If the user's input is ALREADY sufficient, OR if answers have resolved key ambiguities, return the finalized blueprint JSON with status "COMPLETED":
+4. If the user's input is ALREADY sufficient, OR if user answers have resolved ambiguities, return the finalized blueprint JSON with status "COMPLETE":
 {
-  "status": "COMPLETED",
+  "status": "COMPLETE",
   "problemStatement": "Clear concise 1-2 sentence problem description tailored to this vision",
-  "suggestedStack": ["Tech1", "Tech2", "Tech3"],
+  "suggestedTechStack": ["Next.js", "TypeScript", "PostgreSQL", "Prisma", "Tailwind CSS"],
   "functionalRequirements": ["Functional requirement 1", "Functional requirement 2"],
   "nonFunctionalRequirements": ["Non-functional requirement 1", "Non-functional requirement 2"],
   "extractedFeatures": [
@@ -157,7 +157,9 @@ INSTRUCTIONS:
       "phase": "MVP",
       "priority": "HIGH"
     }
-  ]
+  ],
+  "assumptions": ["Assumption 1", "Assumption 2"],
+  "openQuestions": []
 }`;
 
   const userPrompt = `Project Name: ${projectName}
@@ -177,14 +179,14 @@ ${JSON.stringify(userAnswers)}`;
     const parsed = JSON.parse(cleaned);
 
     if (
-      parsed.status === "NEEDS_INPUT" &&
+      (parsed.status === "NEEDS_INPUT" || parsed.status === "NEEDS_INPUT") &&
       Array.isArray(parsed.questions) &&
       parsed.questions.length > 0 &&
       Object.keys(userAnswers).length === 0
     ) {
       return {
         result: null,
-        questions: parsed.questions,
+        pendingQuestions: parsed.questions,
         userAnswers,
         status: "NEEDS_INPUT",
         error: null,
@@ -192,25 +194,37 @@ ${JSON.stringify(userAnswers)}`;
     }
 
     const validated = requirementSynthesisSchema.parse(parsed);
+    // Combine stack array aliases
+    const combinedStack = Array.from(
+      new Set([...(validated.suggestedTechStack || []), ...(validated.suggestedStack || [])])
+    );
+    if (combinedStack.length === 0) {
+      combinedStack.push("Next.js", "TypeScript", "PostgreSQL", "Prisma", "Tailwind CSS");
+    }
+    validated.suggestedTechStack = combinedStack;
+    validated.suggestedStack = combinedStack;
+
     return {
       result: validated,
+      pendingQuestions: null,
       userAnswers,
-      status: "COMPLETED",
+      status: "COMPLETE",
       error: null,
     };
-  } catch (err: any) {
-    if (err?.value?.status === "NEEDS_INPUT" || (Array.isArray(err) && err[0]?.value?.status === "NEEDS_INPUT")) {
-      const qPayload = err?.value?.questions || err[0]?.value?.questions || [];
+  } catch (err: unknown) {
+    const errObj = err as { value?: { status?: string; questions?: QuestionItem[] }; message?: string };
+    if (errObj?.value?.status === "NEEDS_INPUT" || (Array.isArray(err) && err[0]?.value?.status === "NEEDS_INPUT")) {
+      const qPayload = errObj?.value?.questions || (err as Array<{ value?: { questions?: QuestionItem[] } }>)[0]?.value?.questions || [];
       return {
         result: null,
-        questions: qPayload,
+        pendingQuestions: qPayload,
         userAnswers,
         status: "NEEDS_INPUT",
         error: null,
       };
     }
     console.error("AI Synthesis Error in requirementSynthesisNode:", err);
-    throw new Error(`Requirement Synthesis Failed: ${err?.message || err}`);
+    throw new Error(`Requirement Synthesis Failed: ${errObj?.message || String(err)}`);
   }
 }
 
