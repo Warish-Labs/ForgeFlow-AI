@@ -53,9 +53,22 @@ export function AskUserQuestionnaireModal({
   const [serverError, setServerError] = useState<{ message: string; saved: boolean } | null>(null);
   const [successSummary, setSuccessSummary] = useState<QuestionnaireSubmitResult["summary"] | null>(null);
 
+  // Track question IDs key to avoid resetting state on parent re-renders
+  const questionsKey = (questions || []).map((q) => q.id).join(",");
+
   // Initialize initial answer states when questions change
   useEffect(() => {
     if (questions && questions.length > 0) {
+      // Do not interrupt an active submission or success flow
+      if (
+        modalState === "SUBMITTING" ||
+        modalState === "SAVING_ANSWERS" ||
+        modalState === "RESUMING_SYNTHESIS" ||
+        modalState === "SUCCESS"
+      ) {
+        return;
+      }
+
       const initial: Record<string, any> = {};
       questions.forEach((q) => {
         if (q.type === "single_select" && q.options && q.options.length > 0) {
@@ -68,12 +81,12 @@ export function AskUserQuestionnaireModal({
           initial[q.id] = "";
         }
       });
-      setAnswers(initial);
+      setAnswers((prev) => (Object.keys(prev).length === 0 ? initial : prev));
       setValidationResult(null);
       setServerError(null);
       setModalState("IDLE");
     }
-  }, [questions]);
+  }, [questionsKey]);
 
   if (!isOpen || !questions || questions.length === 0) return null;
 
@@ -150,7 +163,6 @@ export function AskUserQuestionnaireModal({
     try {
       setModalState("SAVING_ANSWERS");
       
-      // Delay simulation for progress visual feedback if fast
       const res = await onSubmit(answers);
 
       if (!res.success) {
@@ -187,10 +199,10 @@ export function AskUserQuestionnaireModal({
         if (res.summary) {
           setSuccessSummary(res.summary);
         }
-        // Small delay to let user see success state before closing
+        // Authoritative auto-close after brief visual success confirmation
         setTimeout(() => {
           if (onClose) onClose();
-        }, 1400);
+        }, 800);
       }
     } catch (err: any) {
       setModalState("FAILURE");

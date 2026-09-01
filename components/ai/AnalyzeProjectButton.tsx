@@ -98,7 +98,6 @@ export function AnalyzeProjectButton({
       setSuccessSummary(result.data.summary);
     }
 
-    setPendingQuestions(null);
     setButtonLabel("Re-analyze Vision");
     router.refresh();
 
