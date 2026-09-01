@@ -34,8 +34,9 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
   const [techStackInput, setTechStackInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen && !isRedirecting) return null;
 
   function handleAutoFillDemo() {
     const demo = DEMO_PROJECT_TEMPLATES[Math.floor(Math.random() * DEMO_PROJECT_TEMPLATES.length)];
@@ -77,19 +78,46 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
       techStack: stackArray,
     });
 
-    setIsSubmitting(false);
-
     if (!result.success) {
+      setIsSubmitting(false);
       setErrorMsg(result.error.message);
       return;
     }
 
+    setIsSubmitting(false);
+    setIsRedirecting(true);
     setName("");
     setIdeaText("");
     setTechStackInput("");
-    onClose();
 
     router.push(`/projects/${result.data.id}`);
+  }
+
+  if (isRedirecting) {
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 p-6 backdrop-blur-xl animate-in fade-in duration-200">
+        <div className="relative w-full max-w-md rounded-2xl border border-[#1060ee]/40 bg-[#0d1220] p-8 text-center shadow-2xl space-y-6">
+          <div className="h-1.5 w-full bg-gradient-to-r from-[#1060ee] via-[#38b6ff] to-[#2fe6b0] absolute top-0 left-0 right-0 rounded-t-2xl" />
+          
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1060ee]/20 border border-[#1060ee]/40 text-[#38b6ff] shadow-lg shadow-[#1060ee]/20 animate-pulse">
+            <SparklesIcon className="h-8 w-8 text-[#38b6ff]" />
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold text-[#f3f6fc]">
+              Creating Software Blueprint
+            </h3>
+            <p className="text-xs text-[#9aa4b8]">
+              Setting up single-tenant database records and initializing requirement synthesis workspace...
+            </p>
+          </div>
+
+          <div className="w-full h-1.5 rounded-full bg-[#1b2338] overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-[#1060ee] via-[#38b6ff] to-[#2fe6b0] animate-pulse w-3/4 rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

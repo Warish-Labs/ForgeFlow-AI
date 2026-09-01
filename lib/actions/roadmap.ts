@@ -57,34 +57,43 @@ export async function generateRoadmapAction(
       decisions: decisionsList,
     });
 
-    await prisma.$transaction(async (tx) => {
-      // Delete old roadmap items
-      await tx.roadmapItem.deleteMany({
-        where: { projectId },
-      });
+    await prisma.$transaction(
+      async (tx) => {
+        // Delete old roadmap items
+        await tx.roadmapItem.deleteMany({
+          where: { projectId },
+        });
 
-      // Create new roadmap items
-      for (let i = 0; i < synthResult.items.length; i++) {
-        const item = synthResult.items[i];
-        await tx.roadmapItem.create({
-          data: {
+        // Create new roadmap items in bulk
+        const itemsToCreate = synthResult.items.map((item, i) => {
+          let phaseEnum: "MVP" | "PHASE_2" | "PHASE_3" = "MVP";
+          if (item.phase === "PHASE_2" || String(item.phase).includes("2")) phaseEnum = "PHASE_2";
+          else if (item.phase === "PHASE_3" || String(item.phase).includes("3")) phaseEnum = "PHASE_3";
+
+          return {
             projectId,
             title: item.title,
-            phase: item.phase,
+            phase: phaseEnum,
             status: item.status || "todo",
             order: i + 1,
             dependsOn: item.dependsOn || [],
-          },
+          };
         });
-      }
 
-      // Update project status to EXPORTED / EXPORT_READY
-      await tx.project.update({
-        where: { id: projectId },
-        data: { status: "EXPORTED" },
-      });
+        if (itemsToCreate.length > 0) {
+          await tx.roadmapItem.createMany({
+            data: itemsToCreate,
+          });
+        }
 
-    });
+        // Update project status to EXPORTED / EXPORT_READY
+        await tx.project.update({
+          where: { id: projectId },
+          data: { status: "EXPORTED" },
+        });
+      },
+      { timeout: 25000 }
+    );
 
     const providerName = getLlmProvider();
     await logAiUsageAction({
