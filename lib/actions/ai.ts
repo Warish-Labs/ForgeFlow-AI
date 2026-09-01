@@ -105,8 +105,9 @@ export async function analyzeProjectAction(
   const startTime = Date.now();
 
   try {
+    const { isAdmin } = await checkIsAdmin();
     const project = await prisma.project.findFirst({
-      where: { id: projectId, ownerId: userId },
+      where: isAdmin ? { id: projectId } : { id: projectId, ownerId: userId },
     });
 
     if (!project) {
@@ -366,8 +367,9 @@ export async function resumeProjectSynthesisAction(
 
   try {
     // 2. Project Ownership Check
+    const { isAdmin } = await checkIsAdmin();
     const project = await prisma.project.findFirst({
-      where: { id: projectId, ownerId: userId },
+      where: isAdmin ? { id: projectId } : { id: projectId, ownerId: userId },
     });
 
     if (!project) {

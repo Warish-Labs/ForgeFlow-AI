@@ -106,17 +106,19 @@ export async function createProjectAction(
   }
 }
 
+import { checkIsAdmin } from "@/lib/auth/guard";
+
 export async function getUserProjectsAction() {
   const userId = await getAuthUserId();
   if (!userId) {
     return [];
   }
 
+  const { isAdmin } = await checkIsAdmin();
+
   try {
     const projects = await prisma.project.findMany({
-      where: {
-        ownerId: userId,
-      },
+      where: isAdmin ? {} : { ownerId: userId },
       orderBy: {
         updatedAt: "desc",
       },
@@ -145,12 +147,11 @@ export async function getProjectByIdAction(projectId: string) {
     return null;
   }
 
+  const { isAdmin } = await checkIsAdmin();
+
   try {
     const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        ownerId: userId, // Strict ownership check
-      },
+      where: isAdmin ? { id: projectId } : { id: projectId, ownerId: userId },
       include: {
         features: true,
         decisions: {
