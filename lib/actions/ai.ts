@@ -5,9 +5,21 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { createSynthesisGraph } from "@/lib/ai/graph";
-import { getLlmClient, invokeLlmWithFallback, logAiStage, getGroqModel, getGeminiModel, getLlmProvider } from "@/lib/ai/provider";
+import {
+  getLlmClient,
+  invokeLlmWithFallback,
+  logAiStage,
+  getGroqModel,
+  getGeminiModel,
+  getLlmProvider,
+} from "@/lib/ai/provider";
 import { buildChatSystemPrompt } from "@/lib/ai/prompts/chat";
-import { checkUserAiQuotaAction, checkUserTavilyQuotaAction, logAiUsageAction } from "@/lib/services/quota";
+import { searchTavily, TavilySearchResult } from "@/lib/tools/tavily";
+import {
+  checkUserAiQuotaAction,
+  checkUserTavilyQuotaAction,
+  logAiUsageAction,
+} from "@/lib/services/quota";
 import { logAuditEventAction } from "@/lib/services/audit";
 import { checkIsAdmin } from "@/lib/auth/guard";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
@@ -520,7 +532,7 @@ export async function sendChatMessageAction(
             tavilyContext = `\n\n### Live Web Research Findings:\n` +
               tavilyRes.results
                 .slice(0, 2)
-                .map((r) => `- **[${r.title}](${r.url})**: ${r.content}`)
+                .map((r: TavilySearchResult) => `- **[${r.title}](${r.url})**: ${r.content}`)
                 .join("\n");
           }
           await logAiUsageAction({
