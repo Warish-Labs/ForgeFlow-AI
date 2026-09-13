@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import Script from "next/script";
+import { AnalyticsTracker } from "@/components/analytics-tracker";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -154,6 +155,7 @@ export default function RootLayout({
           </Script>
         </head>
         <body className="min-h-dvh bg-[var(--background)] text-[var(--foreground)] flex flex-col">
+          <AnalyticsTracker />
           {children}
         </body>
       </html>
